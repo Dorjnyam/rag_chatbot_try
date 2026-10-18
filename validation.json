@@ -1,0 +1,98 @@
+{
+  "recorded_at_utc": "2026-10-18T15:30:21.616766+00:00",
+  "implementation": "Local app with approved company corpus and live Gemini verified; broader human quality acceptance remains open",
+  "runtime": {
+    "python": "3.12.14",
+    "postgresql": "18.4",
+    "tesseract": "5.4.0.20240606",
+    "libreoffice": "26.8.1.1",
+    "dependencies": "requirements.lock.txt"
+  },
+  "automated": {
+    "suite": "pytest",
+    "passed": 42,
+    "failed": 0,
+    "skipped": 0,
+    "report": "test-results/pytest.xml",
+    "postgresql": "real isolated rag_test database",
+    "chroma": "Real persistent collections, including independent-process similarity query regression",
+    "gemini": "Deterministic doubles and SDK MockTransport in suite; live embedding and generation additionally verified on approved company policies",
+    "native": [
+      "PDF native extraction",
+      "English and Mongolian scanned PDF OCR",
+      "legacy DOC conversion"
+    ],
+    "migration_round_trip": "passed",
+    "migration_drift": "none",
+    "dependency_check": "116 packages compatible",
+    "seconds": 124.208,
+    "database_transaction_boundary": "asserted closed during embedding, token counting and generation"
+  },
+  "evaluation": {
+    "questions": 80,
+    "synthetic_documents": 16,
+    "dataset_hash": "98b279bf9b642ec67f7ba3e775318b464849bf3609b779d985057c693020adb9",
+    "draft_labels": true,
+    "groups": [
+      "mn->mn",
+      "en->en",
+      "mn->en",
+      "en->mn"
+    ],
+    "smoke": "all 80 cases exercised with FakeGemini; not evidence of model quality",
+    "report": "test-results/mock-evaluation.json",
+    "real_baseline": "Not run: existing 80 draft questions label the synthetic corpus, not the imported company corpus"
+  },
+  "browser": {
+    "provider": "in-app browser",
+    "workflow": "upload update, extraction review, activate, chat, citation trace, reindex pending with previous active, delete disposable fixture",
+    "workflow_backend": "real PostgreSQL and Chroma; FakeGemini test harness",
+    "main_app": "empty-corpus insufficient-evidence flow verified with no API calls",
+    "responsive_checks": {
+      "requested_desktop": [
+        1280,
+        900
+      ],
+      "observed_desktop_css_width": 1164,
+      "requested_mobile": [
+        390,
+        844
+      ],
+      "observed_mobile_css_width": 355,
+      "horizontal_overflow": false,
+      "note": "in-app browser zoom changes CSS viewport dimensions"
+    },
+    "screenshots": [
+      "test-results/preview.png",
+      "test-results/desktop.png",
+      "test-results/mobile.png",
+      "test-results/browser-query.png"
+    ],
+    "company_corpus": "HTTP health/chat/documents/evaluation 200; fresh rendered verification unavailable because browser access was blocked by URL policy"
+  },
+  "remaining_acceptance": [
+    "Line-by-line human OCR review for critical policy details",
+    "Bilingual human review of draft synthetic question/evidence labels",
+    "Create reviewed company relevance labels and run frozen company baseline",
+    "Investigate recorded top-5 retrieval gap; assess answer correctness and citation support",
+    "Learner explanations and controlled real-model experiments"
+  ],
+  "intentional_adjustment": "gemini-embedding-001 count_tokens unsupported; embedding inputs split at a recorded conservative 1900 UTF-8 byte guard, request batches capped at 16000 bytes. This is not an exact token count. Generation uses model token counting.",
+  "adjustment_source": "https://github.com/googleapis/python-genai/issues/1541",
+  "ocr_data_sha256": "a151a3806d61ac43619cd383896d551ba5c3b07388ffec6fc83c8c604d677570",
+  "preserved": "Existing LaTeX source and generated example files were not edited",
+  "local_app": "http://127.0.0.1:5000",
+  "company_corpus": {
+    "documents": 31,
+    "pages": 362,
+    "indexed_chunks": 868,
+    "ocr": "All pages OCRed with mon+eng due missing or corrupt native text",
+    "review": "Machine-assisted review with sampled visual comparisons; not line-by-line human verification",
+    "originals_unchanged": true,
+    "reconciliation_issues": 0,
+    "live_checks": "Mongolian and English policy-purpose answers with valid citation IDs; absent-information abstention passed",
+    "retrieval_limitation": "Initial discrimination/harassment question missed the precise evidence in top 5 and abstained; retained in instance/gobi/live-checks-initial.json",
+    "index_restart": "All 16 collections searchable after rebuilding from saved embeddings; no re-embedding required",
+    "details": "Private reports in ignored instance/gobi"
+  }
+}

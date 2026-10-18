@@ -1,0 +1,18 @@
+# Fdb version 4
+["pdflatex"] 1792321424.78665 "documentation/example.tex" "example.pdf" "example" 1792321425.91345 0
+  "/etc/texmf/web2c/texmf.cnf" 1792320436.82418 475 c0e671620eb5563b2130f56340a5fde8 ""
+  "/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1248133631 35752 024fb6c41858982481f6968b5fc26508 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/base/article.cls" 1748806692 20144 b966087dda3b194755eb460d32e2ef75 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/base/size10.clo" 1748806692 8448 686612a86f0e04f41ea577f5ec7e83d8 ""
+  "/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def" 1761248321 30662 bfd6e864f4ffc5018b0e2b6260c3181c ""
+  "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1769369718 41603 27f93b3067076450172040dcd57ca8b3 ""
+  "/usr/share/texmf/web2c/texmf.cnf" 1769369718 41603 27f93b3067076450172040dcd57ca8b3 ""
+  "/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map" 1792320502 5541477 3118940318599480888143717dd32d64 ""
+  "/var/lib/texmf/web2c/pdftex/pdflatex.fmt" 1792320645 3637121 0d3824e6300c36af143ba1f641f788a0 ""
+  "documentation/example.tex" 1792318543.34521 76 a9d0b79901b117d65eb331884d9ef774 ""
+  "example.aux" 1792321425.73963 32 3985256e7290058c681f74d7a3565a19 "pdflatex"
+  (generated)
+  "example.aux"
+  "example.log"
+  "example.pdf"
+  (rewritten before read)
