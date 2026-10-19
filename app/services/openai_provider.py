@@ -57,8 +57,8 @@ class OpenAIProvider:
             else:
                 current[key] = value
 
-    def _call(self, operation):
-        for attempt in range(3):
+    def _call(self, operation, *, max_attempts=3):
+        for attempt in range(max_attempts):
             self._check_deadline()
             self.attempts += 1
             try:
@@ -81,7 +81,7 @@ class OpenAIProvider:
                 transient = isinstance(exc, (APIConnectionError, APITimeoutError, RateLimitError)) or status in (429, 500, 502, 503, 504)
                 if quota:
                     raise ValueError("OpenAI API quota or billing limit reached. Check API billing and usage limits.") from exc
-                if not transient or attempt == 2:
+                if not transient or attempt + 1 == max_attempts:
                     safe_code = "".join(ch for ch in str(code or "") if ch.isalnum() or ch in "_-.")[:80]
                     detail = f", {safe_code}" if safe_code else ""
                     raise ValueError(f"OpenAI request failed ({status or type(exc).__name__}{detail}). Check API access, model, billing, or rate limits.") from exc
@@ -160,7 +160,7 @@ class OpenAIProvider:
         response = self._call(lambda client: client.responses.create(model=self.generation_model,
             instructions="Return only a concise, faithful search query. Preserve every identifier and number.", input=prompt,
             max_output_tokens=256, reasoning={"effort": self.config["OPENAI_REASONING_EFFORT"]},
-            text={"format": {"type": "json_schema", "name": "query_rewrite", "strict": True, "schema": schema}}))
+            text={"format": {"type": "json_schema", "name": "query_rewrite", "strict": True, "schema": schema}}), max_attempts=1)
         if response.status != "completed" or not response.output_text:
             return None
         try:

@@ -84,7 +84,7 @@ if (chat) chat.addEventListener('submit', async (event) => {
   try {
     const question = document.querySelector('#question').value;
     const response = await fetch('/chat/messages', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},
-      body:JSON.stringify({question, top_k:document.querySelector('#top-k').value, document_id:document.querySelector('#document-filter').value,
+      body:JSON.stringify({question, return_to:window.location.pathname + window.location.search, top_k:document.querySelector('#top-k').value, document_id:document.querySelector('#document-filter').value,
         language:document.querySelector('#language-filter').value, retrieval_only:document.querySelector('#retrieval-only').checked})});
     const data = await response.json();
     if (!data.id) throw new Error(data.error || 'Хүсэлт амжилтгүй боллоо. Дахин оролдоно уу.');

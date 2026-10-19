@@ -29,15 +29,15 @@ class Gemini:
             raise ValueError("Request deadline exceeded.")
         return types.HttpOptions(timeout=max(1, int(seconds * 1000)))
 
-    def call(self, operation):
-        for attempt in range(3):
+    def call(self, operation, *, max_attempts=3):
+        for attempt in range(max_attempts):
             try:
                 self.attempts += 1
                 return operation(self.options())
             except (errors.APIError, httpx.TransportError) as exc:
                 status = getattr(exc, "code", None)
                 transient = isinstance(exc, httpx.TransportError) or status == 429 or status in (500, 502, 503, 504)
-                if not transient or attempt == 2:
+                if not transient or attempt + 1 == max_attempts:
                     raise ValueError(f"Gemini request failed ({status or 'transport'}). Check API access, model and quota.") from exc
                 hint = retry_delay(exc)
                 delay = max(2 ** attempt + random.uniform(0, 0.3), hint if hint is not None else (30 if status == 429 else 0))
@@ -111,7 +111,7 @@ class Gemini:
             contents="Асуултыг эх санаа, нэр, дугаар, шүүлтүүрийг хадгалан Монгол кирилл хайлтын хэлбэрт оруул. Шинэ баримт бүү нэм. Асуулт: " + question,
             config=types.GenerateContentConfig(system_instruction="Only return a concise, faithful search query. Preserve all identifiers and numbers.",
                 temperature=0, max_output_tokens=256, response_mime_type="application/json", response_json_schema=schema,
-                http_options=options)))
+                http_options=options)), max_attempts=1)
         try:
             value = __import__("json").loads(response.text or "")
             return value.get("query") if isinstance(value, dict) else None

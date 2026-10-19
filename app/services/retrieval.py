@@ -1,5 +1,7 @@
 """Dense and sparse retrieval with rank fusion and an optional local reranker."""
 import time
+import math
+import numbers
 from sqlalchemy import select
 from flask import current_app
 from ..extensions import db
@@ -36,7 +38,7 @@ def incompatible_active_count():
     return sum(1 for version, _document in active_versions() if embedding_mismatch(version))
 
 
-def dense_search(queries, groups, top_k, client):
+def dense_search(queries, groups, top_k, client, return_rankings=False):
     rankings = {}
     start = time.monotonic()
     vectors = client.embed(queries, "RETRIEVAL_QUERY")
@@ -51,7 +53,8 @@ def dense_search(queries, groups, top_k, client):
     fused = sparse.rrf(rankings, current_app.config["RRF_K"])
     for hit in fused:
         hit["similarity"] = 1 - hit["distance"] if hit.get("distance") is not None else None
-    return fused, (embedded - start) * 1000, search_ms
+    result = (fused, (embedded - start) * 1000, search_ms)
+    return (*result, rankings) if return_rankings else result
 
 
 def _reranker():
@@ -68,14 +71,17 @@ def _reranker():
     return model
 
 
-def retrieve(question, k=5, document_ids=None, language=None, client=None, candidates=None):
+def retrieve(question, k=5, document_ids=None, language=None, client=None, candidates=None, include_pool=False):
     if k not in (1, 3, 5, 10, 20):
         raise ValueError("top-k must be 1, 3, 5, 10, or 20")
     if language and language not in ("mn", "en", "mixed"):
         raise ValueError("Invalid document language filter")
     rows = active_versions(document_ids, language)
     if not rows:
-        return [], dict(query_embedding_ms=0, vector_search_ms=0, sparse_search_ms=0, reranking_ms=0)
+        timings = dict(query_embedding_ms=0, vector_search_ms=0, sparse_search_ms=0, reranking_ms=0)
+        if include_pool:
+            timings["candidate_pool"] = []
+        return [], timings
     config = current_app.config
     for version, document in rows:
         if embedding_mismatch(version):
@@ -83,12 +89,12 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
     groups, versions, titles = {}, [], {}
     for version, document in rows:
         groups.setdefault(version.collection_name, []).append(version.id)
-        versions.append((version.id, document.title, version.original_filename))
-        titles[version.id] = dict(title=document.title, version_number=version.version_number)
+        versions.append((version.id, document.title, version.original_filename, document.id))
+        titles[version.id] = dict(title=document.title, version_number=version.version_number, filename=version.original_filename)
     db.session.commit()
     client = client or provider()
     queries = list(dict.fromkeys((candidates or [question])[:3])) or [question]
-    dense, embedding_ms, dense_ms = dense_search(queries, groups, config["DENSE_TOP_K"], client)
+    dense, embedding_ms, dense_ms, dense_rankings = dense_search(queries, groups, config["DENSE_TOP_K"], client, return_rankings=True)
     sparse_start = time.monotonic()
     sparse_rankings, missing = {}, set()
     if config["RETRIEVAL_MODE"] == "hybrid":
@@ -101,8 +107,7 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
     if config["RETRIEVAL_MODE"] == "dense" or degraded:
         hits = dense
     else:
-        sparse_hits = sparse.rrf(sparse_rankings, config["RRF_K"])
-        hits = sparse.rrf({"dense": dense, "sparse": sparse_hits}, config["RRF_K"])
+        hits = sparse.rrf({**dense_rankings, **sparse_rankings}, config["RRF_K"])
     for hit in hits:
         hit.update(**titles[hit["metadata"]["version_id"]], selected=False, degraded=degraded)
         hit.setdefault("distance", None)
@@ -113,15 +118,21 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
         try:
             model = _reranker()
             scores = model.predict([(question, hit["text"]) for hit in hits], batch_size=16, show_progress_bar=False)
+            scores = list(scores)
+            if len(scores) != len(hits) or any(isinstance(score, bool) or not isinstance(score, numbers.Real) or not math.isfinite(float(score)) for score in scores):
+                raise ValueError("Reranker returned invalid scores")
             for hit, score in zip(hits, scores):
                 hit["rerank_score"] = float(score)
             hits.sort(key=lambda hit: (-hit["rerank_score"], hit["id"]))
         except Exception:
-            current_app.logger.exception("Optional reranker failed; preserving fused retrieval order")
+            current_app.logger.warning("Optional reranker failed; preserving fused retrieval order")
             for hit in hits:
                 hit["reranker_error"] = True
         rerank_ms = (time.monotonic() - rerank_start) * 1000
-    for rank, hit in enumerate(hits[:k], 1):
+    for rank, hit in enumerate(hits, 1):
         hit["rank"] = rank
-    return hits[:k], dict(query_embedding_ms=embedding_ms, vector_search_ms=dense_ms, sparse_search_ms=sparse_ms,
+    timings = dict(query_embedding_ms=embedding_ms, vector_search_ms=dense_ms, sparse_search_ms=sparse_ms,
         reranking_ms=rerank_ms, sparse_degraded=degraded, missing_sparse_versions=sorted(missing))
+    if include_pool:
+        timings["candidate_pool"] = hits
+    return hits[:k], timings

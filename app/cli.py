@@ -220,6 +220,15 @@ def register(app):
         run = run_evaluation(dataset, split, generate, int(top_k), allow_unreviewed)
         click.echo(json.dumps(dict(id=run.id, snapshot=run.snapshot, config=run.config, metrics=run.metrics), ensure_ascii=False, indent=2))
 
+    @app.cli.command("benchmark-plan")
+    @click.argument("dataset", type=click.Path(exists=True, path_type=Path))
+    @click.option("--split", type=click.Choice(["dev", "test"]), default="dev")
+    @click.option("--top-k", type=click.Choice(["1", "3", "5", "10"]), default="5")
+    def benchmark_plan_command(dataset, split, top_k):
+        """Preview the experiment matrix without DB reads or AI requests."""
+        from .benchmarking import benchmark_plan
+        click.echo(json.dumps(benchmark_plan(dataset, app.config, split, int(top_k)), ensure_ascii=False, indent=2))
+
     @app.cli.command("compare-runs")
     @click.argument("first")
     @click.argument("second")

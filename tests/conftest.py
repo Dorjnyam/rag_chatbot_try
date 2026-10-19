@@ -4,9 +4,13 @@ import json
 import math
 import os
 import re
+import uuid
+import warnings
+from contextlib import contextmanager
 import pytest
 from docx import Document
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from werkzeug.datastructures import FileStorage
 from app import create_app
 from app.extensions import db
@@ -38,29 +42,71 @@ class FakeGemini:
         return json.dumps(dict(status="answered", answer="Синтетик журмын дагуу таван ажлын өдөр байна. [S1]", sources=["S1"]), ensure_ascii=False)
 
 
+@pytest.fixture(autouse=True)
+def isolate_secrets_and_dotenv(monkeypatch):
+    """No developer credentials or .env values enter any test app."""
+    import app as application
+    monkeypatch.setattr(application, "load_dotenv", lambda *args, **kwargs: False)
+    for name in ("OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+
+@contextmanager
+def disposable_database(admin_url, engine_factory=create_engine):
+    """Create a fresh UUID database; ownership, not a name prefix, permits cleanup."""
+    parsed = make_url(admin_url)
+    if parsed.get_backend_name() != "postgresql":
+        raise ValueError("TEST_DATABASE_ADMIN_URL must use PostgreSQL")
+    token = uuid.uuid4().hex
+    name, marker = "rag_test_" + token, "pytest-owned:" + token
+    admin = engine_factory(parsed, isolation_level="AUTOCOMMIT")
+    owned = False
+    try:
+        with admin.connect() as connection:
+            # Both SQL literals below contain only a locally generated UUID.
+            connection.execute(text(f'CREATE DATABASE "{name}"'))
+            connection.execute(text(f"COMMENT ON DATABASE \"{name}\" IS '{marker}'"))
+            owned = True
+        yield parsed.set(database=name).render_as_string(hide_password=False)
+    finally:
+        if owned:
+            try:
+                with admin.connect() as connection:
+                    actual = connection.scalar(text("SELECT shobj_description(oid, 'pg_database') "
+                        "FROM pg_database WHERE datname = :name"), {"name": name})
+                    if actual != marker:
+                        raise RuntimeError("Database ownership changed; refusing cleanup")
+                    connection.execute(text(f'DROP DATABASE "{name}"'))
+            except Exception as exc:
+                warnings.warn(f"Disposable database cleanup deferred ({type(exc).__name__}); no forced cleanup performed")
+        admin.dispose()
+
+
 @pytest.fixture
 def app(tmp_path):
-    url = os.getenv("TEST_DATABASE_URL", "postgresql+psycopg://rag:rag@127.0.0.1:55438/rag_test")
-    if not url.rsplit("/", 1)[-1].startswith("rag_test"):
-        raise RuntimeError("TEST_DATABASE_URL must name a disposable rag_test* database")
-    engine = create_engine(url)
+    admin_url = os.getenv("TEST_DATABASE_ADMIN_URL")
+    if not admin_url:
+        pytest.skip("Integration isolation unavailable: set TEST_DATABASE_ADMIN_URL to a PostgreSQL admin connection with CREATEDB")
+    # Entering the context must succeed before any app/schema is initialized.
+    database = disposable_database(admin_url)
     try:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
+        url = database.__enter__()
     except Exception:
-        pytest.skip("Disposable PostgreSQL unavailable; set TEST_DATABASE_URL")
+        pytest.skip("Cannot provision an owned disposable PostgreSQL database; verify TEST_DATABASE_ADMIN_URL and CREATEDB permission")
+    try:
+        application = create_app(dict(TESTING=True, DATA_DIR=tmp_path, SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI=url,
+            AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite",
+            GEMINI_API_KEY="", OPENAI_API_KEY="", GEMINI_FACTORY=FakeGemini, OPENAI_FACTORY=FakeGemini,
+            EMBEDDING_DIMENSIONS=128, TRUSTED_HOSTS=["localhost", "127.0.0.1"]))
+        with application.app_context():
+            try:
+                db.create_all()
+                yield application
+            finally:
+                db.session.remove()
+                db.engine.dispose()
     finally:
-        engine.dispose()
-    app = create_app(dict(TESTING=True, DATA_DIR=tmp_path, SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI=url,
-        AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite",
-        EMBEDDING_DIMENSIONS=128, GEMINI_FACTORY=FakeGemini, TRUSTED_HOSTS=["localhost", "127.0.0.1"]))
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-        yield app
-        db.session.remove()
-        db.drop_all()
-        db.engine.dispose()
+        database.__exit__(None, None, None)
 
 
 @pytest.fixture

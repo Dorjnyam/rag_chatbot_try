@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-19",
+  "python": "3.12.15",
+  "runs": [
+    {
+      "command": "python -m pytest -q -rs -p no:cacheprovider --basetemp <external> --junitxml=<external> tests",
+      "passed": 120,
+      "skipped": 1,
+      "failed": 0,
+      "seconds": 61.82
+    },
+    {
+      "command": "python -m pytest -q -p no:cacheprovider --basetemp <external> --junitxml=<external> tests/test_readiness.py::test_ready_with_real_disposable_postgres_and_synthetic_indexes",
+      "passed": 1,
+      "skipped": 0,
+      "failed": 0,
+      "seconds": 2.62
+    }
+  ],
+  "unique_cases": {"passed": 121, "skipped": 1, "failed": 0},
+  "skip_reason": "Tesseract missing",
+  "javascript_syntax": "PASS",
+  "dependency_consistency": "PASS: 120 installed packages compatible",
+  "whitespace": "PASS",
+  "database_isolation": "Only newly generated UUID databases with matching ownership markers; no arbitrary existing database DDL",
+  "paid_api_calls": 0,
+  "model_downloads": 0,
+  "company_document_processing": false,
+  "quality_acceptance": "PENDING: reviewed real corpus, authorized live evaluation and verified local reranker",
+  "browser_visual_verification": "PENDING: saved browser permission denial was respected"
+}

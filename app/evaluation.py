@@ -10,30 +10,44 @@ from .models import Document, DocumentVersion, EvaluationQuestion, EvaluationRes
 from .services.storage import fingerprint, read_json, mutation_lock
 from .services.rag import ask, config_snapshot
 
+METRIC_REVISION = "evidence-recall-binary-chunk-v2"
 
-def ranking_metrics(retrieved_units, relevant_units, k):
-    """A gold unit counts once even if several overlapping chunks contain it."""
+
+def ranking_metrics(retrieved_units, relevant_units, k, relevant_chunk_count=None, retrieved_ids=None):
+    """Evidence recall is deduplicated; precision/DCG use binary chunk relevance.
+
+    nDCG requires the full eligible corpus relevance count, never the gold-unit
+    count or the observed result count. Repeated canonical IDs have no gain.
+    """
+    if not isinstance(k, int) or k <= 0:
+        raise ValueError("Metric K must be a positive integer.")
     relevant = set(relevant_units)
     if not relevant:
         return dict(recall=None, precision=None, reciprocal_rank=None, hit_rate=None, ndcg=None)
-    seen, first, relevant_results, dcg = set(), None, 0, 0.0
+    seen, first, relevant_results, dcg, seen_ids = set(), None, 0, 0.0, set()
     for rank, units in enumerate(retrieved_units[:k], 1):
+        canonical_id = retrieved_ids[rank - 1] if retrieved_ids is not None else rank
+        if canonical_id in seen_ids:
+            continue
+        seen_ids.add(canonical_id)
         found = set(units) & relevant
         if found and first is None:
             first = rank
-        if found - seen:
-            gain = len(found - seen)
+        if found:
             relevant_results += 1
-            dcg += (2 ** gain - 1) / math.log2(rank + 1)
+            dcg += 1 / math.log2(rank + 1)
         seen.update(found)
-    ideal = sum((2 ** 1 - 1) / math.log2(rank + 1) for rank in range(1, min(len(relevant), k) + 1))
+    if relevant_chunk_count is not None and (not isinstance(relevant_chunk_count, int) or relevant_chunk_count < relevant_results):
+        raise ValueError("Full corpus relevant chunk count is inconsistent with retrieved relevance.")
+    ideal = sum(1 / math.log2(rank + 1) for rank in range(1, min(relevant_chunk_count or 0, k) + 1))
     return dict(recall=len(seen) / len(relevant), precision=relevant_results / k,
-        reciprocal_rank=1 / first if first else 0, hit_rate=float(bool(seen)), ndcg=dcg / ideal if ideal else 0.0)
+        reciprocal_rank=1 / first if first else 0, hit_rate=float(bool(seen)),
+        ndcg=(dcg / ideal if ideal else 0.0) if relevant_chunk_count is not None else None)
 
 
 def load_questions(file):
     questions = [json.loads(line) for line in file.read_text(encoding="utf8").splitlines() if line.strip()]
-    seen = set()
+    seen, group_splits = set(), {}
     for q in questions:
         if q["id"] in seen or q["language"] not in ("mn", "en") or q["split"] not in ("dev", "test") or not isinstance(q["answerable"], bool):
             raise ValueError("Invalid or duplicate evaluation question.")
@@ -42,6 +56,13 @@ def load_questions(file):
         if q["answerable"] and not q.get("evidence"):
             raise ValueError("Answerable evaluation questions require gold evidence.")
         seen.add(q["id"])
+        for field in ("intent_id", "family_id", "intent", "family", "intent_group"):
+            group = q.get(field)
+            if group is not None:
+                identity = (field, str(group))
+                if identity in group_splits and group_splits[identity] != q["split"]:
+                    raise ValueError("Evaluation intent/family variants must share one split.")
+                group_splits[identity] = q["split"]
     return questions
 
 
@@ -108,6 +129,25 @@ def run_evaluation(file, split="dev", generate=False, k=5, allow_unreviewed=Fals
         return _run_evaluation(file, split, generate, k, allow_unreviewed)
 
 
+def corpus_chunk_mapping(versions):
+    """Read stored chunks without embeddings or API calls for an exact IDCG."""
+    from .services.vectorstore import store
+    records = []
+    for version in versions:
+        data = store().collection(version.collection_name).get(where={"version_id": version.id}, include=["documents", "metadatas"])
+        if len(data["ids"]) != version.expected_chunks or len(data["documents"]) != len(data["ids"]) or len(data["metadatas"]) != len(data["ids"]):
+            raise ValueError("Eligible corpus chunk mapping is incomplete.")
+        if not version.manifest_path or {row["id"] for row in read_json(version.manifest_path)} != set(data["ids"]):
+            raise ValueError("Eligible corpus mapping does not match its canonical manifest.")
+        for id_, text, metadata in zip(data["ids"], data["documents"], data["metadatas"]):
+            if not isinstance(text, str) or not metadata or metadata.get("version_id") != version.id or metadata.get("document_id") != version.document_id:
+                raise ValueError("Eligible corpus chunk mapping is invalid.")
+            records.append(dict(id=id_, text=text, metadata=metadata))
+    if len({r["id"] for r in records}) != len(records):
+        raise ValueError("Eligible corpus has duplicate canonical IDs.")
+    return records
+
+
 def _run_evaluation(file, split, generate, k, allow_unreviewed):
     questions = load_questions(file)
     selected = [q for q in questions if q["split"] == split]
@@ -118,9 +158,18 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
     versions = db.session.scalars(select(DocumentVersion).join(Document, Document.active_version_id == DocumentVersion.id)
         .where(Document.state == "active", DocumentVersion.state == "ready")).all()
     golds = {q["id"]: resolve_gold(q, versions) for q in selected}
+    try:
+        corpus_chunks = corpus_chunk_mapping(versions)
+        mapping_status = "complete"
+    except Exception as exc:
+        # Retrieval can still be measured; never invent the unavailable IDCG.
+        corpus_chunks, mapping_status = None, "unavailable:" + type(exc).__name__
+    document_languages = dict(db.session.execute(select(Document.id, Document.language).where(Document.id.in_([v.document_id for v in versions]))).all())
+    languages = {v.id: document_languages[v.document_id] for v in versions}
     corpus = sorted([dict(id=v.id, document_id=v.document_id, sha256=v.sha256, config=v.config_hash, index_config=v.config) for v in versions], key=lambda v: v["id"])
     revision = fingerprint(questions)
     snapshot = dict(corpus=corpus, corpus_hash=fingerprint(corpus), dataset_hash=revision, split=split,
+        metric_revision=METRIC_REVISION, relevance_mapping=mapping_status,
         reviewed=all(q.get("review_status") == "reviewed" for q in selected),
         packages={name: importlib.metadata.version(name) for name in ("Flask", "SQLAlchemy", "chromadb", "google-genai", "openai", "tiktoken", "pypdf", "python-docx", "pytesseract")})
     run = EvaluationRun(id=uid(), snapshot=snapshot, config=dict(config_snapshot(k), generate=generate))
@@ -133,11 +182,16 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
     for q in selected:
         gold = golds[q["id"]]
         # Independent conversations prevent previous gold questions influencing answers.
-        log, hits = ask(q["question"], uid(), k=k, language=q["evidence_language"], retrieval_only=not generate)
+        log, hits = ask(q["question"], uid(), k=k, language=q.get("evidence_language"), retrieval_only=not generate)
         units = [units_for_hit(h, gold) for h in hits]
-        metrics = {"passage_" + key: value for key, value in ranking_metrics(units, [g["unit_id"] for g in gold], k).items()}
+        eligible = [h for h in corpus_chunks if not q.get("evidence_language") or languages[h["metadata"]["version_id"]] == q["evidence_language"]] if corpus_chunks is not None else None
+        relevant_count = sum(bool(units_for_hit(h, gold)) for h in eligible) if eligible is not None else None
+        metrics = {"passage_" + key: value for key, value in ranking_metrics(units, [g["unit_id"] for g in gold], k,
+            relevant_chunk_count=relevant_count, retrieved_ids=[h["id"] for h in hits]).items()}
         documents = list(dict.fromkeys(h["metadata"]["document_id"] for h in hits))
-        metrics.update({"document_" + key: value for key, value in ranking_metrics([{d} for d in documents], {g["document_id"] for g in gold}, k).items()})
+        relevant_documents = {g["document_id"] for g in gold if not q.get("evidence_language") or document_languages[g["document_id"]] == q["evidence_language"]}
+        metrics.update({"document_" + key: value for key, value in ranking_metrics([{d} for d in documents], relevant_documents, k,
+            relevant_chunk_count=len(relevant_documents), retrieved_ids=documents).items()})
         metrics["returned_count"] = len(hits)
         metrics["answerable"] = int(q["answerable"])
         category = q.get("input_language", "mn_cyrl" if q["language"] == "mn" else "en")
@@ -147,9 +201,14 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
             metrics["normalization_exact_match"] = float(expected_normalized in log.config.get("query_candidates", []))
         if generate:
             metrics["abstention_match"] = int((log.status == "insufficient_evidence") == (not q["answerable"])) if log.status != "error" else 0
-            metrics["citation_id_validity"] = 0 if log.status == "error" else 1
-            from .services.language import answer_is_mongolian
-            metrics["answer_language_compliance"] = float(answer_is_mongolian(log.answer))
+            validation = log.config.get("generation_validation", {})
+            metrics["first_response_citation_id_validity"] = validation.get("first_citation_valid")
+            metrics["first_response_language_compliance"] = language_metric(validation.get("first_language"))
+            metrics["repair_attempted"] = validation.get("repair_attempted")
+            metrics["repair_language_compliance"] = language_metric(validation.get("repair_language"))
+            metrics["fallback_used"] = bool(validation.get("fallback_reason")) if validation else None
+            metrics["answer_language_compliance"] = language_metric(validation.get("delivered_language"))
+            metrics["citation_id_validity"] = validation.get("delivered_citation_valid")
         db.session.add(EvaluationResult(run_id=run.id, question_id=q["id"], question_revision=revision, query_log_id=log.id, metrics=metrics))
         db.session.commit()
         category = q.get("input_language", "mn_cyrl" if q["language"] == "mn" else "en")
@@ -165,11 +224,25 @@ def compare_runs(first, second):
     # Chunk/model experiments change index IDs; compare the immutable source set instead.
     def sources(run):
         return sorted((v["document_id"], v["sha256"]) for v in run.snapshot["corpus"])
+    revision_first, revision_second = first.snapshot.get("metric_revision"), second.snapshot.get("metric_revision")
     if sources(first) != sources(second) or any(first.snapshot.get(k) != second.snapshot.get(k) for k in ("dataset_hash", "split")):
         raise ValueError("Runs do not share the same source corpus, dataset and split.")
+    if not revision_first or revision_first != revision_second:
+        raise ValueError("Runs require the same explicit metric revision.")
+    if first.config.get("top_k") != second.config.get("top_k"):
+        raise ValueError("Runs require the same final K.")
+    def embedding_space(run):
+        return (run.config.get("provider", "gemini"), run.config.get("embedding_model"), run.config.get("dimensions"),
+            tuple(sorted({v.get("index_config", {}).get("normalization", "l2-v1") for v in run.snapshot["corpus"]})))
+    if embedding_space(first) != embedding_space(second):
+        raise ValueError("Runs require the same embedding space.")
     changes = {k: [first.config.get(k), second.config.get(k)] for k in first.config.keys() | second.config.keys() if first.config.get(k) != second.config.get(k)}
     return dict(first=first.id, second=second.id, changed_settings=changes, first_metrics=first.metrics, second_metrics=second.metrics,
         caution="Inspect index configurations too. Adopt changes only after reviewing per-question regressions and human answer scores.")
+
+
+def language_metric(value):
+    return {"pass": 1.0, "fail": 0.0, "uncertain": None}.get(value)
 
 
 def human_summary(results):
@@ -190,5 +263,7 @@ def export_run(run):
         question = db.session.get(EvaluationQuestion, (result.question_id, result.question_revision))
         log = db.session.get(QueryLog, result.query_log_id)
         rows.append(dict(question=question.data, metrics=result.metrics, human_review=result.review,
-            query=dict(id=log.id, status=log.status, answer=log.answer, citations=log.citations, trace=log.trace, timings=log.timings, usage=log.usage, error=log.error)))
+            query=dict(id=log.id, status=log.status, answer=log.answer, citations=log.citations, trace=log.trace,
+                context_trace=log.config.get('context_trace', []), generation_validation=log.config.get('generation_validation', {}),
+                timings=log.timings, usage=log.usage, error=log.error)))
     return dict(id=run.id, snapshot=run.snapshot, config=run.config, metrics=run.metrics, human_summary=human_summary(results), results=rows)

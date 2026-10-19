@@ -283,9 +283,12 @@ a separate local workspace view.
 Gold labels use immutable source hashes or explicit version IDs plus page/block
 locations and evidence excerpts. An excerpt must occur in a retrieved chunk; a
 block overlap alone is insufficient. Relabel ambiguous boundaries when experimenting.
-Repeated overlapping chunks count the same gold evidence unit once. Precision@k
-counts retrieved positions contributing new relevant evidence, divided by k; recall
-counts unique gold units recovered. Document metrics collapse document IDs. MRR uses
+Repeated overlapping chunks count the same gold evidence unit once for recall.
+Precision@k counts relevant unique canonical chunks, divided by k; recall
+counts unique gold units recovered. Binary chunk nDCG uses the complete eligible
+corpus relevance mapping for its ideal denominator; it is null if that mapping is
+unavailable. Metric definitions are versioned; historical runs are preserved.
+Document metrics collapse document IDs. MRR uses
 the first relevant rank. Missing results occupy nonrelevant positions. Retrieval
 metrics for unanswerable questions are null, not zero.
 
@@ -300,7 +303,8 @@ Abstention status matching is an automatic indicator, not a complete human judgm
 .venv\Scripts\python.exe -m flask --app app export-run RUN_A instance/reports/baseline.json
 ```
 
-Compare the same corpus, labels and split, changing one setting. Inspect per-question
+Compare the same corpus, labels, split, final K, metric revision and embedding space,
+changing one setting. Inspect per-question
 regressions. Alternate execution order, distinguish warm/cold runs, and repeat
 generation when variability matters. Keep held-out questions untouched during tuning.
 
@@ -330,8 +334,9 @@ cross-encoder remains unverified for Mongolian until a real, reviewed corpus is 
 ## Testing and learning checkpoints
 
 ```powershell
-# The fixture refuses database names that do not begin rag_test.
-$env:TEST_DATABASE_URL='postgresql+psycopg://rag:rag@127.0.0.1:55438/rag_test'
+# Explicit local test-admin connection with CREATEDB permission.
+# Each fixture creates a NEW UUID database; no existing database is reused.
+$env:TEST_DATABASE_ADMIN_URL='postgresql+psycopg://rag:rag@127.0.0.1:55438/postgres'
 .venv\Scripts\python.exe -m pytest -q
 .venv\Scripts\python.exe -m flask --app app db check
 ```
@@ -339,8 +344,11 @@ $env:TEST_DATABASE_URL='postgresql+psycopg://rag:rag@127.0.0.1:55438/rag_test'
 Tests use actual PostgreSQL and Chroma, deterministic API doubles, and a real SDK
 mock transport that checks request serialization without network calls. Native OCR
 and DOC conversion tests run when their tools exist and otherwise report skips.
-API doubles never establish Gemini model quality. Integration tests rebuild tables
-only inside the explicitly disposable `rag_test*` database. An opt-in live smoke is
+API doubles never establish model quality. Integration tests create a fresh UUID
+database and remove only that database after checking its ownership marker. Missing
+admin configuration/permission produces an explicit skip. `.env` loading is disabled
+and inherited provider keys are cleared in tests. The legacy TEST_DATABASE_URL is
+not used. An opt-in live smoke is
 `doctor --live`; no real-key tests run automatically.
 
 The multilingual synthetic smoke set is available at
@@ -348,6 +356,27 @@ The multilingual synthetic smoke set is available at
 does not establish retrieval quality. Compare modes on the same frozen corpus and
 reviewed labels using separate runs, changing `RETRIEVAL_MODE`, reranking and rewrite
 flags between runs, then use `compare-runs`.
+
+Preview the four-mode matrix without reading the database or making API calls:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app benchmark-plan evaluation/corpus/questions.jsonl --split dev --top-k 5
+```
+
+The planner has a zero live-request/model-download budget and reports pending
+reviewed labels/local reranker prerequisites. It does not execute a benchmark.
+Existing `evaluate` commands perform embedding API calls and require a separately
+approved budget. Reranking and rewriting stay off by default.
+
+`GET /health` is liveness; `GET /ready` returns 200/503 and non-secret dependency
+checks without AI calls or creating indexes. A cold Chroma check reads only its
+existing catalog/dimensions; full per-version ID checks run once the store is
+initialized. It is not a substitute for reconciliation or a live provider check.
+Chat/evaluation pages are paginated. Query JSON includes additive `context_trace`
+for selected evidence outside final K, whose original chunk IDs remain unchanged.
+
+See [reliability implementation notes](documentation/10-reliability-and-evaluation.md)
+for validation limits, metrics, rollout and rollback.
 
 | Phase | Inspect and learn | Validate | Explain independently |
 |---|---|---|---|

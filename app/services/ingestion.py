@@ -89,14 +89,34 @@ def upload(file, title, language, document_id=None):
             raise ValueError("The upload is not a legacy binary DOC file.")
         target = path(relative)
         target.parent.mkdir(parents=True, exist_ok=True)
-        if not target.exists():
-            target.write_bytes(content)
-        if document is None:
-            document = Document(id=uid(), title=(title or filename).strip()[:240], language=language)
-            db.session.add(document)
-            db.session.flush()
-        version = new_version(document, filename, extension, digest, relative, config)
-        return version, False
+        created_source = not target.exists()
+        try:
+            if created_source:
+                created_source = False
+                # Exclusive creation preserves an existing content-addressed source.
+                with target.open("xb") as handle:
+                    created_source = True
+                    handle.write(content)
+            if document is None:
+                document = Document(id=uid(), title=(title or filename).strip()[:240], language=language)
+                db.session.add(document)
+                db.session.flush()
+            version = new_version(document, filename, extension, digest, relative, config)
+            return version, False
+        except Exception:
+            db.session.rollback()
+            if created_source:
+                try:
+                    references = db.session.scalar(select(func.count()).select_from(DocumentVersion)
+                        .where(DocumentVersion.file_path == relative))
+                    if references == 0:
+                        target.unlink(missing_ok=True)
+                except Exception:
+                    # An unavailable database cannot prove that the source is unreferenced.
+                    db.session.rollback()
+                    current_app.logger.warning("Upload source cleanup deferred: reference check unavailable")
+            raise
+
 
 
 def reindex(document_id, forced_pages=()):

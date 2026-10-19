@@ -202,7 +202,7 @@ def test_grounded_chat_trace_and_no_duplicate_content(app, ready):
     assert log.timings["total_ms"] > 0
 
 
-def test_bad_citation_retries_once_and_records_error(app, ready):
+def test_bad_citation_retries_once_and_abstains_safely(app, ready):
     class Invalid(FakeGemini):
         calls = 0
         def generate(self, prompt, system):
@@ -210,8 +210,9 @@ def test_bad_citation_retries_once_and_records_error(app, ready):
             return json.dumps(dict(status="answered", answer="Unsupported [S99]", sources=["S99"]))
     app.config["GEMINI_FACTORY"] = Invalid
     log, _ = ask("leave", uid())
-    assert log.status == "error" and Invalid.calls == 2
-    assert "not supplied" in log.error
+    assert log.status == "insufficient_evidence" and Invalid.calls == 2
+    assert not log.citations and not log.error
+    assert log.config['generation_validation']['fallback_reason'] == 'invalid_or_failed_repair'
 
 
 def test_changed_embedding_space_fails_explicitly(app, ready):
@@ -341,7 +342,7 @@ def test_eval_runner_persists_and_requires_label_review(app, ready, tmp_path, cl
     assert json.loads(target.read_text(encoding="utf8"))["snapshot"]["reviewed"] is False
 
 
-def test_full_bilingual_dataset_engineering_smoke(app, monkeypatch):
+def test_full_bilingual_dataset_engineering_smoke(app, monkeypatch, tmp_path):
     """80 cases exercise the runner, not model quality or human acceptance."""
     from werkzeug.datastructures import FileStorage
     from app.services.parsing import parse_direct
@@ -372,7 +373,7 @@ def test_full_bilingual_dataset_engineering_smoke(app, monkeypatch):
     for category in ("mn_cyrl", "en", "mn_latn", "mixed"):
         assert multilingual.metrics["input:" + category]["language_detection_accuracy"]["mean"] == 1
     assert multilingual.metrics["input:mn_latn"]["normalization_exact_match"]["mean"] == 1
-    output = Path(__file__).resolve().parents[1] / "test-results"
+    output = tmp_path / "test-results"
     output.mkdir(exist_ok=True)
     (output / "mock-evaluation.json").write_text(json.dumps(dict(provider="FakeGemini TEST DOUBLE", human_review=False,
         disclaimer="Engineering smoke only. Not evidence of bilingual Gemini quality.", runs=records), indent=2), encoding="utf8")

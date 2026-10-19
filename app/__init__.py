@@ -51,6 +51,12 @@ def create_app(test_config=None):
     def health():
         return {"status": "ok", "service": "learning-rag"}
 
+    @app.get("/ready")
+    def ready():
+        checks = readiness_checks(app)
+        healthy = all(checks.values())
+        return jsonify(status="ready" if healthy else "not_ready", checks=checks), 200 if healthy else 503
+
     @app.errorhandler(ValueError)
     def invalid(exc):
         if request.is_json:
@@ -79,3 +85,77 @@ def create_app(test_config=None):
         return response
 
     return app
+
+
+def readiness_checks(app):
+    """Read-only readiness; never initializes Chroma or calls an AI provider."""
+    import os
+    import json
+    import sqlite3
+    from types import SimpleNamespace
+    from sqlalchemy import select, text
+    from .models import Document, DocumentVersion
+    from .services.retrieval import embedding_mismatch
+    from .services import sparse
+    from .services.storage import path
+
+    selected = app.config.get("AI_PROVIDER", "gemini")
+    checks = dict(database=False, storage=False, provider_configuration=False,
+        embedding_compatibility=False, dense_artifacts=False, sparse_artifacts=False)
+    checks["provider_configuration"] = selected in ("gemini", "openai") and bool(
+        app.config.get(selected.upper() + "_API_KEY") or callable(app.config.get(selected.upper() + "_FACTORY")))
+    try:
+        root = Path(app.config["DATA_DIR"]).resolve()
+        checks["storage"] = root.is_dir() and os.access(root, os.R_OK | os.W_OK | os.X_OK)
+    except (OSError, ValueError):
+        return checks
+    rows = []
+    try:
+        # Use an independent connection: probing must never commit a request session.
+        with db.engine.connect() as connection:
+            with connection.begin():
+                connection.execute(text("SET LOCAL statement_timeout = '2000ms'"))
+                connection.execute(text("SET TRANSACTION READ ONLY"))
+                connection.execute(text("SELECT 1"))
+                statement = select(DocumentVersion.id, DocumentVersion.config,
+                    DocumentVersion.collection_name, DocumentVersion.expected_chunks,
+                    DocumentVersion.manifest_path).join(Document, Document.active_version_id == DocumentVersion.id).where(
+                    Document.state == "active", DocumentVersion.state == "ready")
+                rows = connection.execute(statement).all()
+        checks["database"] = True
+    except Exception:
+        return checks
+    try:
+        checks["embedding_compatibility"] = all(not embedding_mismatch(SimpleNamespace(config=row.config), app.config) for row in rows)
+        if not rows:
+            checks["dense_artifacts"] = checks["sparse_artifacts"] = True
+            return checks
+        manifests = {}
+        for row in rows:
+            if not row.manifest_path:
+                return checks
+            manifest = json.loads(path(row.manifest_path).read_text(encoding="utf8"))
+            ids = {item["id"] for item in manifest}
+            if len(ids) != row.expected_chunks or not ids:
+                return checks
+            manifests[row.id] = ids
+        vector_store = app.config.get("VECTOR_STORE") or app.extensions.get("vector_store")
+        if vector_store is not None:
+            checks["dense_artifacts"] = all(vector_store.ids(row.collection_name, row.id) == manifests[row.id] for row in rows)
+        else:
+            # PersistentClient may create directories or mutate its catalog. Probe
+            # only the existing SQLite catalog through a read-only connection.
+            catalog = root / "chroma" / "chroma.sqlite3"
+            if catalog.is_file() and os.access(catalog, os.R_OK):
+                with sqlite3.connect(catalog.as_uri() + "?mode=ro", uri=True, timeout=2) as connection:
+                    collections = dict(connection.execute("SELECT name, dimension FROM collections"))
+                checks["dense_artifacts"] = all(collections.get(row.collection_name) == row.config.get("dimensions") for row in rows)
+        if app.config.get("RETRIEVAL_MODE", "hybrid") == "dense":
+            checks["sparse_artifacts"] = True
+        else:
+            checks["sparse_artifacts"] = all(
+                {item["id"] for item in sparse.load_index(row.id) or []} == manifests[row.id] for row in rows)
+    except Exception:
+        # No exception body, paths, credentials or source content in HTTP output.
+        pass
+    return checks

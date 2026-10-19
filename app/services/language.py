@@ -5,6 +5,9 @@ import unicodedata
 CYRILLIC = re.compile(r"[\u0400-\u04ff]")
 LATIN_WORD = re.compile(r"[A-Za-z]+(?:['’-][A-Za-z]+)?")
 TOKEN = re.compile(r"https?://\S+|[A-Za-zА-Яа-яЁёӨөҮү]+|\d+(?:[./-]\d+)*", re.UNICODE)
+# Match identifiers before matching words, so a reviewed word inside a code is
+# never transliterated (for example policy_ajiltan_2026 or AJILTAN-04).
+PROTECTED_SPAN = re.compile(r"https?://\S+|\b[A-Za-z0-9]+(?:[_./:@-][A-Za-z0-9]+)+\b|\b[A-Za-z]+\d[A-Za-z0-9]*\b|\b[A-Z]{2,}\b|\b\d+(?:[./-]\d+)*\b")
 
 MN_LATIN = {
     "ajiltan": "ажилтан", "ajiltnii": "ажилтны", "ajiltand": "ажилтанд",
@@ -68,7 +71,12 @@ def normalize_romanized(text):
             if token[:1].isupper():
                 replacement = replacement[:1].upper() + replacement[1:]
         return replacement or token
-    candidate = TOKEN.sub(convert, original)
+    parts, cursor = [], 0
+    for match in PROTECTED_SPAN.finditer(original):
+        parts.extend((TOKEN.sub(convert, original[cursor:match.start()]), match.group(0)))
+        cursor = match.end()
+    parts.append(TOKEN.sub(convert, original[cursor:]))
+    candidate = "".join(parts)
     confidence = replacements / max(1, len(LATIN_WORD.findall(original)))
     return dict(text=candidate, confidence=round(confidence, 3), replacements=replacements)
 
@@ -85,9 +93,36 @@ def query_candidates(text):
         candidates=candidates[:3], normalized_confidence=normalize_romanized(original)["confidence"])
 
 
-def answer_is_mongolian(text):
-    """Require Cyrillic prose; exact Latin citations/identifiers are tolerated."""
-    content = re.sub(r"https?://\S+|\[[^\]]+\]|[A-Za-z0-9_./:-]+", " ", text)
-    letters = re.findall(r"[A-Za-zА-Яа-яЁёӨөҮү]", content)
-    cyrillic = CYRILLIC.findall(content)
-    return bool(cyrillic) and len(cyrillic) / max(1, len(letters)) >= .55
+MN_OUTPUT_CUES = {"байна", "болно", "болох", "биш", "үгүй", "юм", "мөн", "гэж", "нь", "энэ", "тухай", "дагуу", "ажлын", "ажилтан", "ажилтны", "өдөр", "хоног", "журам", "журмын", "баримт", "баримтын", "нотолгоо", "хангалтгүй", "хариулт", "хүсэлт", "чөлөө", "авах", "өгөх", "шаардлагатай", "таван"}
+RU_OUTPUT_CUES = {"это", "для", "что", "или", "должен", "нужно", "можно", "согласно", "правила", "сотрудник", "сотрудника", "является", "политика", "дней", "отпуск"}
+
+
+def validate_output_language(text, protected=()):
+    """Conservative policy check, not a language-identification quality metric.
+
+    Only caller-verified exact titles/names/identifiers may be exempted. English
+    prose must remain visible to the check; ambiguous Cyrillic is uncertain.
+    """
+    content = normalize_text(text)
+    for exact in sorted({str(p) for p in protected if p}, key=len, reverse=True):
+        content = re.sub(r"(?<!\w)" + re.escape(exact) + r"(?!\w)", " ", content)
+    content = re.sub(r"\[S\d+\]", " ", content)
+    words = re.findall(r"[A-Za-zА-Яа-яЁёӨөҮү]+", content)
+    if not words:
+        return "uncertain"
+    latin = sum(len(w) for w in words if w.isascii())
+    total = sum(map(len, words))
+    if latin / total > .10:
+        return "fail"
+    tokens = {w.casefold() for w in words}
+    mn, ru = len(tokens & MN_OUTPUT_CUES), len(tokens & RU_OUTPUT_CUES)
+    if ru >= 2 and ru > mn:
+        return "fail"
+    if len(words) < 3 or mn < 2:
+        return "uncertain"
+    return "pass"
+
+
+def answer_is_mongolian(text, protected=()):
+    """Compatibility wrapper: uncertain output does not pass the policy."""
+    return validate_output_language(text, protected) == "pass"

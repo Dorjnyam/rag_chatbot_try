@@ -107,8 +107,7 @@ def test_citation_and_abstention_contract():
 
 def test_metrics_hand_calculated_and_overlap_deduplicated():
     result = ranking_metrics([set(), {"a"}, {"a"}], {"a", "b"}, 5)
-    assert result == dict(recall=.5, precision=.2, reciprocal_rank=.5, hit_rate=1.0,
-        ndcg=(1 / math.log2(3)) / (1 + 1 / math.log2(3)))
+    assert result == dict(recall=.5, precision=.4, reciprocal_rank=.5, hit_rate=1.0, ndcg=None)
     assert ranking_metrics([], set(), 5)["recall"] is None
     assert ranking_metrics([], {"a"}, 5)["reciprocal_rank"] == 0
 

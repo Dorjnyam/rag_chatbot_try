@@ -1,0 +1,18 @@
+{
+  "snapshot_head": "2cdd1d1aae48d08dc2e2232d58becdabbabf8249",
+  "final_head": "6c2840a12936dae96bda2fe8bd7524c87fba5fd1",
+  "head_advanced_during_audit": true,
+  "note": "HEAD moved during the audit; audited source/config/docs hashes match the initial snapshot.",
+  "source_snapshot_files": 82,
+  "current_source_files": 82,
+  "changed_after_snapshot": [],
+  "missing_after_snapshot": [],
+  "report_files": 15,
+  "audit_agents": [
+    "Lead Architect",
+    "Backend / RAG / Database",
+    "Multilingual NLP / QA / Security",
+    "DevOps / Frontend",
+    "Independent Technical Reviewer"
+  ]
+}
