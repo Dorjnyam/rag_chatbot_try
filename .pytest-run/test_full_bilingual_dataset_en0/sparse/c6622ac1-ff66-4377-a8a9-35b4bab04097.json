@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "version_id": "c6622ac1-ff66-4377-a8a9-35b4bab04097",
+  "content_hash": "e35ef6fb709d1e6d45007a6f28a998081d587a81efa188be6dfe466c8883f231",
+  "documents": [
+    {
+      "id": "c22fa883-5fc6-5271-8368-2b28a2efbbbe",
+      "text": "Travel\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 55,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "a4571bef8128e883c00a23e84b57f9e48dbebed3b0574352c7f9d0c1b5801a13",
+        "document_id": "cae6226b-78b0-4a70-8e3c-deda421bff6f",
+        "version_id": "c6622ac1-ff66-4377-a8a9-35b4bab04097",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "travel-en",
+      "filename": "travel-en.docx",
+      "terms": [
+        "travel-en",
+        "travel-en.docx",
+        "travel",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "a968360a-1886-5b7a-bcf6-83dd7ed9c65e",
+      "text": "Rules\n\nThe daily meal allowance is 45000 MNT.\n\nSubmit travel receipts within 7 calendar days after return.\n\nPolicy code | TRAVEL-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 131,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "6299e4bd6e829279e20e8c27b350bbc18049b5c6d34ea8ed9925832cb620331f",
+        "document_id": "cae6226b-78b0-4a70-8e3c-deda421bff6f",
+        "version_id": "c6622ac1-ff66-4377-a8a9-35b4bab04097",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "travel-en",
+      "filename": "travel-en.docx",
+      "terms": [
+        "travel-en",
+        "travel-en.docx",
+        "rules",
+        "rules",
+        "the",
+        "daily",
+        "meal",
+        "allowance",
+        "is",
+        "45000",
+        "mnt",
+        "submit",
+        "travel",
+        "receipts",
+        "within",
+        "7",
+        "calendar",
+        "days",
+        "after",
+        "return",
+        "policy",
+        "code",
+        "travel-01"
+      ]
+    }
+  ]
+}

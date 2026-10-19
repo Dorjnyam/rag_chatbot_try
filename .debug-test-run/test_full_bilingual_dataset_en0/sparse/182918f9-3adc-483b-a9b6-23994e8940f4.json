@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "version_id": "182918f9-3adc-483b-a9b6-23994e8940f4",
+  "content_hash": "dd07d263c2084f514115ac6178053c91047c17bcce5fadb0710bc3fc558fa977",
+  "documents": [
+    {
+      "id": "da1c79ac-25a1-5106-a781-22c61fe8c870",
+      "text": "Зайнаас ажиллах\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 67,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "b4e772957835d5a074f3b637ea7394fb5d056f569d144739b863299d36119df6",
+        "document_id": "34e3650a-f850-42ed-9b37-665d0103f7fd",
+        "version_id": "182918f9-3adc-483b-a9b6-23994e8940f4",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "remote-mn",
+      "filename": "remote-mn.docx",
+      "terms": [
+        "remote-mn",
+        "remote-mn.docx",
+        "зайнаас",
+        "ажиллах",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "88372db9-5b76-5503-b5c3-9791fe1375d7",
+      "text": "Дүрэм\n\nАжилтан долоо хоногт 2 өдөр зайнаас ажиллаж болно.\n\nТоног төхөөрөмж суурилуулах үед зайнаас ажиллах нөхцөл үйлчлэхгүй.\n\nPolicy code | REMOTE-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 150,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "2b031306de1a02ec6f4f16f0ec2bc4c7a94ce99a972595ade89999e5d6cfc7eb",
+        "document_id": "34e3650a-f850-42ed-9b37-665d0103f7fd",
+        "version_id": "182918f9-3adc-483b-a9b6-23994e8940f4",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "remote-mn",
+      "filename": "remote-mn.docx",
+      "terms": [
+        "remote-mn",
+        "remote-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "ажилтан",
+        "долоо",
+        "хоногт",
+        "2",
+        "өдөр",
+        "зайнаас",
+        "ажиллаж",
+        "болно",
+        "тоног",
+        "төхөөрөмж",
+        "суурилуулах",
+        "үед",
+        "зайнаас",
+        "ажиллах",
+        "нөхцөл",
+        "үйлчлэхгүй",
+        "policy",
+        "code",
+        "remote-01"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "version_id": "9ed552a3-b002-42de-83fe-017d64dd7dd1",
+  "content_hash": "c85a5f1905b796c5bc6a7f33efed31701032d167f450a9ba122a87dfa0de8a2f",
+  "documents": [
+    {
+      "id": "ea42a1eb-9c76-56f8-adb5-fdf2c2944ce0",
+      "text": "Аюулгүй байдал\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 66,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "9a6c4c1f336c0bfa33fd1b46dd4643f6deb284ee6554551ebe01f5619b6e53c5",
+        "document_id": "0e20ce99-80e1-472a-9c15-6c9315def7a1",
+        "version_id": "9ed552a3-b002-42de-83fe-017d64dd7dd1",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "safety-mn",
+      "filename": "safety-mn.docx",
+      "terms": [
+        "safety-mn",
+        "safety-mn.docx",
+        "аюулгүй",
+        "байдал",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "eea1c214-f86f-59ee-baea-4459adbe4ebf",
+      "text": "Дүрэм\n\nЦугларах цэг нь хойд хаалга байна.\n\nГалын дохиоллын үед цахилгаан шат ашиглаж болохгүй.\n\nPolicy code | SAFETY-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 119,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "41122b7baa9a3c0d091baefe4470c4584e23e43b5b5d19f20a9a5f96bb82daf6",
+        "document_id": "0e20ce99-80e1-472a-9c15-6c9315def7a1",
+        "version_id": "9ed552a3-b002-42de-83fe-017d64dd7dd1",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "safety-mn",
+      "filename": "safety-mn.docx",
+      "terms": [
+        "safety-mn",
+        "safety-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "цугларах",
+        "цэг",
+        "нь",
+        "хойд",
+        "хаалга",
+        "байна",
+        "галын",
+        "дохиоллын",
+        "үед",
+        "цахилгаан",
+        "шат",
+        "ашиглаж",
+        "болохгүй",
+        "policy",
+        "code",
+        "safety-01"
+      ]
+    }
+  ]
+}

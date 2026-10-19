@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "version_id": "f9c185c3-87be-43ba-9270-fc1170e4ba4c",
+  "content_hash": "b70987f4c68703beccc2e3454ea6a0fae20ee3dc4ff0d60e5becdf51ba8abb28",
+  "documents": [
+    {
+      "id": "ebcee0bc-48ae-5ce2-9317-c6d7a5790db1",
+      "text": "Safety\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 55,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "d6ce44318fb5042a6e9371404d6229c62098976c19577566a970146196e8c5a2",
+        "document_id": "80f1b0df-40a5-4307-ae14-ec1111346c7c",
+        "version_id": "f9c185c3-87be-43ba-9270-fc1170e4ba4c",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "safety-en",
+      "filename": "safety-en.docx",
+      "terms": [
+        "safety-en",
+        "safety-en.docx",
+        "safety",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "4857758c-485f-5c53-bb79-452ca7423a76",
+      "text": "Rules\n\nThe assembly point is the north gate.\n\nDo not use elevators during a fire alarm.\n\nPolicy code | SAFETY-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 112,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "cdf8877ba502ff8afe9c52ff9e47be902401c4adba320dd533ddb764f4c52449",
+        "document_id": "80f1b0df-40a5-4307-ae14-ec1111346c7c",
+        "version_id": "f9c185c3-87be-43ba-9270-fc1170e4ba4c",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "safety-en",
+      "filename": "safety-en.docx",
+      "terms": [
+        "safety-en",
+        "safety-en.docx",
+        "rules",
+        "rules",
+        "the",
+        "assembly",
+        "point",
+        "is",
+        "the",
+        "north",
+        "gate",
+        "do",
+        "not",
+        "use",
+        "elevators",
+        "during",
+        "a",
+        "fire",
+        "alarm",
+        "policy",
+        "code",
+        "safety-01"
+      ]
+    }
+  ]
+}

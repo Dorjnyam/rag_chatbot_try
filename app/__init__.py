@@ -54,13 +54,23 @@ def create_app(test_config=None):
     @app.errorhandler(ValueError)
     def invalid(exc):
         if request.is_json:
-            return jsonify(error=str(exc)), 400
+            return jsonify(error="Оруулсан мэдээллээ шалгаад дахин оролдоно уу."), 400
         from flask import render_template
-        return render_template("error.html", message=str(exc)), 400
+        return render_template("error.html", message="Оруулсан мэдээллээ шалгаад дахин оролдоно уу."), 400
 
     @app.errorhandler(413)
     def too_large(exc):
-        return "Upload exceeds the 20 MiB limit.", 413
+        return "Файлын хэмжээ 20 MiB хязгаараас хэтэрсэн байна.", 413
+
+    @app.errorhandler(400)
+    @app.errorhandler(403)
+    @app.errorhandler(404)
+    def unavailable(exc):
+        message = "Энэ хүсэлтийг гүйцэтгэх эрхгүй эсвэл хүссэн мэдээлэл олдсонгүй."
+        if request.is_json:
+            return jsonify(error=message), exc.code
+        from flask import render_template
+        return render_template("error.html", message=message), exc.code
 
     @app.after_request
     def headers(response):

@@ -35,6 +35,87 @@ def test_lifecycle_review_idempotence_and_persistent_chroma(app):
     assert not ingestion.reconcile()
 
 
+def test_openai_migration_stages_then_activates_and_rolls_back(app, ready, tmp_path):
+    from app.services.index_migration import prepare, activate, rollback
+    from conftest import FakeGemini
+
+    class FakeOpenAI(FakeGemini):
+        pass
+
+    app.config.update(OPENAI_FACTORY=FakeOpenAI, OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
+        OPENAI_EMBEDDING_DIMENSIONS=128)
+    manifest = "migration-test"
+    dry = prepare("openai", None, dry_run=True)
+    assert dry["eligible_documents"] == 1 and dry["eligible_chunks"] > 0
+    report = prepare("openai", manifest)
+    assert report["status"] == "ready"
+    document = db.session.get(Document, ready.document_id)
+    previous = document.active_version_id
+    assert previous == ready.id
+    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", EMBEDDING_DIMENSIONS=128)
+    assert activate(manifest)["status"] == "activated"
+    assert document.active_version_id != previous
+    app.config.update(AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", EMBEDDING_DIMENSIONS=128)
+    assert rollback(manifest)["status"] == "rolled_back"
+    assert document.active_version_id == previous
+
+
+def test_openai_migration_dry_run_only_selects_incompatible_indexes(app, ready):
+    from app.services.ingestion import upload, process, approve
+    from app.services.index_migration import prepare
+
+    class FakeOpenAI(FakeGemini):
+        pass
+
+    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small",
+        GENERATION_MODEL="gpt-6-luna", EMBEDDING_DIMENSIONS=1536, OPENAI_FACTORY=FakeOpenAI)
+    openai_version, _ = upload(docx_file("This document already uses OpenAI embeddings."), "OpenAI policy", "en")
+    process(openai_version.id)
+    approve(openai_version.id)
+    process(openai_version.id)
+
+    result = prepare("openai", None, dry_run=True)
+    assert result["eligible_documents"] == 1
+    assert result["already_compatible_documents"] == 1
+    assert result["eligible_chunks"] == ready.expected_chunks
+
+
+def test_pending_gemini_review_build_uses_selected_openai_embedding_config(app):
+    from app.services.ingestion import upload, approve, process
+
+    class FakeOpenAI(FakeGemini):
+        pass
+
+    app.config.update(AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite")
+    version, _ = upload(docx_file("Policy text reviewed before provider switch."), "Provider handoff", "en")
+    assert process(version.id, require_review=True).state == "review"
+    approve(version.id)
+    assert version.config.get("provider", "gemini") == "gemini"
+    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small",
+        GENERATION_MODEL="gpt-6-luna", EMBEDDING_DIMENSIONS=128, OPENAI_FACTORY=FakeOpenAI)
+    ready_version = process(version.id)
+    assert ready_version.state == "ready"
+    assert ready_version.config["provider"] == "openai"
+    assert ready_version.config["embedding_model"] == "text-embedding-3-small"
+
+
+def test_import_folder_stages_all_files_for_review(app, tmp_path):
+    folder = tmp_path / "company-policies"
+    folder.mkdir()
+    for name, text in (("leave.docx", "Leave requests need five days."), ("travel.docx", "Travel requests need approval.")):
+        upload = docx_file(text)
+        (folder / name).write_bytes(upload.stream.read())
+    result = app.test_cli_runner().invoke(args=["import-folder", str(folder)])
+    assert result.exit_code == 0, result.output
+    assert "leave.docx: review" in result.output
+    assert "travel.docx: review" in result.output
+    assert db.session.query(Document).count() == 2
+    assert not store().client.list_collections()
+    preview = app.test_cli_runner().invoke(args=["approve-all", "--reviewed", "--dry-run"])
+    assert preview.exit_code == 0 and "Found 2 versions" in preview.output
+    assert db.session.query(DocumentVersion).filter_by(state="review").count() == 2
+
+
 def test_failure_never_replaces_active_and_retry_recovers(app, ready, monkeypatch):
     active_id = ready.id
     updated, _ = ingestion.upload(docx_file("Updated leave policy: ten days."), "Leave", "en", ready.document_id)
@@ -146,13 +227,62 @@ def test_empty_corpus_no_api_key(app):
     assert log.status == "insufficient_evidence" and not hits
 
 
+def test_document_collection_filters_groups_and_safe_return(app, client, ready):
+    extra, _ = ingestion.upload(docx_file("Mongolian leave guidance."), "A policy", "mn")
+    newer, _ = ingestion.upload(docx_file("Updated company leave policy."), "Leave policy", "en", ready.document_id)
+    response = client.get("/documents?q=policy&sort=title_asc&group=none&type=docx&per_page=50")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "A policy" in html and "Leave policy" in html
+    assert "Mongolian" not in html  # source text is not rendered in a collection row
+    assert 'value="50" selected' in html
+    assert html.index("A policy") < html.index("Leave policy")
+    assert "Өмнөх хувилбар хайлтад идэвхтэй" in html
+    grouped = client.get("/documents?q=policy&group=language&type=docx").get_data(as_text=True)
+    assert "Монгол" in grouped and "Англи" in grouped
+    assert client.get("/documents?status=pending").get_data(as_text=True).count("Өмнөх хувилбар хайлтад идэвхтэй") == 1
+    assert client.get("/documents?q=no-such-company-file").get_data(as_text=True).find("Эдгээр нөхцөлөөр баримт олдсонгүй") >= 0
+
+    version_page = client.get(f"/versions/{ready.id}?return_to=https://example.com/steal")
+    assert version_page.status_code == 200
+    assert 'href="/documents"' in version_page.get_data(as_text=True)
+    assert "example.com" not in version_page.get_data(as_text=True)
+    local_return = client.get(f"/versions/{ready.id}?return_to=%2Fdocuments%3Fq%3Dpolicy%23doc-test")
+    assert 'href="/documents?q=policy#doc-test"' in local_return.get_data(as_text=True)
+
+    db.session.add_all(Document(id=uid(), title=f"Paged policy {index:02}", language="en") for index in range(26))
+    db.session.commit()
+    second_page = client.get("/documents?q=Paged&group=none&sort=title_asc&per_page=25&page=2").get_data(as_text=True)
+    assert "2 / 2 хуудас" in second_page and "Paged policy 25" in second_page
+    assert "Paged policy 00" not in second_page
+
+
+def test_sticky_review_action_keeps_review_and_csrf_requirements(client):
+    version, _ = ingestion.upload(docx_file(), "Review me", "en")
+    ingestion.process(version.id)
+    page = client.get(f"/versions/{version.id}")
+    html = page.get_data(as_text=True)
+    assert 'id="sticky-approve" disabled' in html
+    assert 'form="review-form"' in html
+    assert 'name="reviewed" value="yes" required' in html
+    assert 'name="csrf" value=' in html
+    rejected = client.post(f"/versions/{version.id}/approve", data={"csrf": csrf(client), "return_to": "/documents"})
+    assert rejected.status_code == 400
+    assert version.state == "review"
+
+
 def test_ui_csrf_history_escaping_and_session_isolation(app, client, ready):
     assert client.post("/chat/messages", json={"question":"leave"}).status_code == 400
     assert client.post("/chat/messages", headers={"X-CSRF-Token":csrf(client), "Origin":"https://other.test"}, json={"question":"leave"}).status_code == 403
     response = client.post("/chat/messages", headers={"X-CSRF-Token":csrf(client)}, json={"question":"<script>alert(1)</script> leave"})
     assert response.status_code == 200, response.json
     query_id = response.json["id"]
-    assert client.get(f"/queries/{query_id}").status_code == 200
+    details_url = response.json["details_url"]
+    assert details_url == f"/queries/{query_id}?return_to=/chat"
+    detail = client.get(details_url)
+    assert detail.status_code == 200
+    assert 'href="/chat"' in detail.get_data(as_text=True)
+    assert client.get("/chat").status_code == 200
     page = client.get("/chat").text
     assert "&lt;script&gt;" in page and "<script>alert" not in page
     assert app.test_client().get(f"/queries/{query_id}").status_code == 404
@@ -160,6 +290,14 @@ def test_ui_csrf_history_escaping_and_session_isolation(app, client, ready):
     assert client.get("/evaluation").status_code == 200
     assert client.post("/chat/new", data={"csrf":csrf(client)}).status_code == 302
     assert client.get(f"/queries/{query_id}").status_code == 404
+
+
+def test_chat_explains_incompatible_active_embedding_indexes(app, client, ready):
+    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", EMBEDDING_DIMENSIONS=1536)
+    response = client.post("/chat/messages", headers={"X-CSRF-Token":csrf(client)}, json={"question":"leave"})
+    assert response.status_code == 502
+    assert "1 идэвхтэй индекс" in response.json["error"]
+    assert "migrate-indexes prepare --target-provider openai --dry-run" in response.json["error"]
 
 
 def test_cross_process_style_mutation_lock(app):
@@ -224,6 +362,16 @@ def test_full_bilingual_dataset_engineering_smoke(app, monkeypatch):
         for direction in ("mn->mn", "en->en", "mn->en", "en->mn"):
             assert run.metrics[direction]["count"] == 10
         records.append(dict(id=run.id, split=split, metrics=run.metrics))
+    multilingual = run_evaluation(corpus / "questions-multilingual-synthetic.jsonl", split="dev", allow_unreviewed=True)
+    assert multilingual.metrics["overall"]["count"] == 4
+    for category in ("mn_cyrl", "en", "mn_latn", "mixed"):
+        assert multilingual.metrics["input:" + category]["language_detection_accuracy"]["mean"] == 1
+    assert multilingual.metrics["input:mn_latn"]["normalization_exact_match"]["mean"] == 1
+    multilingual = run_evaluation(corpus / "questions-multilingual-synthetic.jsonl", split="dev", allow_unreviewed=True)
+    assert multilingual.metrics["overall"]["count"] == 4
+    for category in ("mn_cyrl", "en", "mn_latn", "mixed"):
+        assert multilingual.metrics["input:" + category]["language_detection_accuracy"]["mean"] == 1
+    assert multilingual.metrics["input:mn_latn"]["normalization_exact_match"]["mean"] == 1
     output = Path(__file__).resolve().parents[1] / "test-results"
     output.mkdir(exist_ok=True)
     (output / "mock-evaluation.json").write_text(json.dumps(dict(provider="FakeGemini TEST DOUBLE", human_review=False,

@@ -104,6 +104,20 @@ class Gemini:
             raise ValueError("Gemini returned no text (possibly safety-blocked or output-limited).")
         return response.text
 
+    def rewrite_query(self, question):
+        """One bounded structured rewrite request; caller validates protected terms."""
+        schema = {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+        response = self.call(lambda options: self.client.models.generate_content(model=self.config["GENERATION_MODEL"],
+            contents="Асуултыг эх санаа, нэр, дугаар, шүүлтүүрийг хадгалан Монгол кирилл хайлтын хэлбэрт оруул. Шинэ баримт бүү нэм. Асуулт: " + question,
+            config=types.GenerateContentConfig(system_instruction="Only return a concise, faithful search query. Preserve all identifiers and numbers.",
+                temperature=0, max_output_tokens=256, response_mime_type="application/json", response_json_schema=schema,
+                http_options=options)))
+        try:
+            value = __import__("json").loads(response.text or "")
+            return value.get("query") if isinstance(value, dict) else None
+        except (ValueError, TypeError):
+            return None
+
     def close(self):
         self.client.close()
 
@@ -146,5 +160,5 @@ def retry_delay(exc):
 
 
 def provider(deadline=None):
-    factory = current_app.config.get("GEMINI_FACTORY", Gemini)
-    return factory(deadline=deadline)
+    from .providers import provider as select_provider
+    return select_provider("gemini", deadline=deadline)

@@ -1,5 +1,60 @@
-{% extends 'base.html' %}{% block title %}Documents{% endblock %}{% block content %}
-<p class="eyebrow">01 / BUILD YOUR EVIDENCE</p><h1>A small, inspectable knowledge base.</h1><p class="lead">Upload, inspect extraction, then activate a verified index. Previous versions stay available until their replacement is ready.</p>
-<div class="columns"><section class="panel"><h2>Add a document</h2><form method="post" action="{{ url_for('documents.upload') }}" enctype="multipart/form-data" class="busy-form"><input type="hidden" name="csrf" value="{{ session.csrf }}"><label>Document title<input name="title" maxlength="240" placeholder="e.g. Synthetic leave policy"></label><label>Evidence language<select name="language"><option value="mixed">Mixed languages</option><option value="mn">Mongolian</option><option value="en">English</option></select></label><label class="upload">PDF, DOCX or DOC · up to 20 MiB<input type="file" name="file" accept=".pdf,.docx,.doc" required></label><button>Save upload</button><p class="muted">Scanned PDFs use local OCR. DOC conversion requires LibreOffice. Processing begins only when you select Process.</p></form></section>
-<section><div class="section-title"><h2>Source library</h2><span>{{ documents|rejectattr('state', 'equalto', 'deleted')|list|length }} documents</span></div>{% for document in documents %}<article class="panel source-card"><div class="section-title"><h3>{{ document.title }}</h3><span class="badge">{{ document.language }} · {{ document.state }}</span></div><p class="muted">{{ document.id }}</p>{% for version in versions if version.document_id == document.id %}<a class="version-row" href="{{ url_for('documents.version', version_id=version.id) }}"><span>Version {{ version.version_number }}{% if document.active_version_id == version.id %} · active{% endif %}</span><span class="badge">{{ version.state }}</span></a>{% endfor %}{% if document.state != 'deleted' %}<form method="post" action="{{ url_for('documents.delete', document_id=document.id) }}" class="busy-form"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="quiet danger">{% if document.state == 'deleting' %}Retry deletion{% else %}Delete document & vectors{% endif %}</button></form>{% endif %}</article>{% else %}<div class="empty"><span>↗</span><h3>Your first source starts here.</h3><p>Use a synthetic policy and inspect what the parser sees.</p></div>{% endfor %}</section></div>
+{% extends 'base.html' %}
+{% block title %}Баримт бичиг{% endblock %}
+{% block content %}
+<p class="eyebrow">01 / ЭХ СУРВАЛЖАА БҮРДҮҮЛЬЕ</p><h1>Шалгаж болох мэдлэгийн сан.</h1>
+<p class="lead">Баримтын төлөв, хэл, төрлөөр хайж, шаардлагатай хувилбараа нээнэ үү.</p>
+
+<details class="panel upload-panel" {% if request.args.get('upload') == '1' %}open{% endif %}>
+  <summary class="upload-toggle">＋ Баримт нэмэх</summary>
+  <form method="post" action="{{ url_for('documents.upload') }}" enctype="multipart/form-data" class="busy-form upload-form">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="return_to" value="{{ return_to }}">
+    <label>Баримтын нэр<input name="title" maxlength="240" placeholder="Жишээ нь: Ээлжийн амралтын журам"></label>
+    <label>Баримтын хэл<select name="language"><option value="mixed">Холимог хэл</option><option value="mn">Монгол</option><option value="en">Англи</option></select></label>
+    <label class="upload">PDF, DOCX эсвэл DOC · 20 MiB хүртэл<input type="file" name="file" accept=".pdf,.docx,.doc" required></label><button>Файл хадгалах</button>
+    <p class="muted">Сканнердсан PDF-д OCR ашиглана. Боловсруулалт таныг эхлүүлэх үед хийгдэнэ.</p>
+  </form>
+</details>
+
+<div class="status-chips" aria-label="Төлөвийн тоо">
+  {% for key in ['review','failed','indexing','parsing','pending','ready'] %}
+  <a class="status-chip {{ 'selected' if status == key else '' }}" href="{{ url_for('documents.documents', q=q, language=language, type=file_type, sort=sort, group=group, per_page=per_page, status=key) }}"><span class="badge status-{{ key }}">{{ status_labels[key] }}</span><strong>{{ status_counts.get(key, 0) }}</strong></a>
+  {% endfor %}
+</div>
+
+<form class="filter-panel" method="get" action="{{ url_for('documents.documents') }}">
+  <label class="search-field">Хайх<input type="search" name="q" value="{{ q }}" placeholder="Баримтын нэр эсвэл файлын нэр"></label>
+  <label>Төлөв<select name="status"><option value="">Идэвхтэй бүх төлөв</option>{% for key, label in status_labels.items() %}<option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  <label>Хэл<select name="language"><option value="">Бүх хэл</option><option value="mn" {% if language == 'mn' %}selected{% endif %}>Монгол</option><option value="en" {% if language == 'en' %}selected{% endif %}>Англи</option><option value="mixed" {% if language == 'mixed' %}selected{% endif %}>Холимог</option></select></label>
+  <label>Файлын төрөл<select name="type"><option value="">Бүх төрөл</option>{% for key in ['pdf','docx','doc'] %}<option value="{{ key }}" {% if file_type == key %}selected{% endif %}>{{ key|upper }}</option>{% endfor %}</select></label>
+  <label>Эрэмбэ<select name="sort"><option value="newest" {% if sort == 'newest' %}selected{% endif %}>Шинэ хувилбар эхэнд</option><option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Хуучин хувилбар эхэнд</option><option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Нэр А–Я</option><option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Нэр Я–А</option></select></label>
+  <label>Бүлэглэх<select name="group"><option value="status" {% if group == 'status' %}selected{% endif %}>Төлөвөөр</option><option value="language" {% if group == 'language' %}selected{% endif %}>Хэлээр</option><option value="type" {% if group == 'type' %}selected{% endif %}>Файлын төрлөөр</option><option value="none" {% if group == 'none' %}selected{% endif %}>Бүлэггүй</option></select></label>
+  <label>Нэг хуудсанд<select name="per_page">{% for n in [25,50,100] %}<option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+  <input type="hidden" name="page" value="1"><button>Шүүх</button><a class="quiet reset-link" href="{{ url_for('documents.documents') }}">Арилгах</a>
+</form>
+<div class="section-title collection-heading"><h2>Эх сурвалжийн жагсаалт</h2><span>{{ total }} баримт</span></div>
+{% if groups %}
+  {% for group_item in groups %}
+  {% if group != 'none' %}<h2 class="group-heading">{{ group_item.label }} <span>{{ group_item.count }}</span></h2>{% endif %}
+  <section class="document-list" aria-label="{{ group_item.label }}">
+    {% for item in group_item['items'] %}{% set document = item.document %}{% set latest = item.latest %}
+    <article class="document-row" id="doc-{{ document.id }}">
+      <div class="document-main"><h3><a href="{{ url_for('documents.version', version_id=(latest.id if latest else ''), return_to=return_to ~ '#doc-' ~ document.id) if latest else '#' }}">{{ document.title }}</a></h3>
+        <p class="filename">{{ latest.original_filename if latest else 'Файл бүртгэгдээгүй' }}</p>
+        <div class="row-meta"><span class="badge status-{{ latest.state if latest else 'pending' }}">{{ status_labels.get(latest.state if latest else 'no_version') }}</span>
+          <span>{{ {'mn':'Монгол','en':'Англи','mixed':'Холимог'}.get(document.language, document.language) }}</span><span>{{ latest.media_type.upper() if latest else '—' }}</span>
+          <time datetime="{{ (latest.created_at if latest else document.created_at).isoformat() }}">{{ (latest.created_at if latest else document.created_at).strftime('%Y-%m-%d') }}</time>
+          {% if document.active_version_id and latest and document.active_version_id != latest.id %}<span class="badge active-note">Өмнөх хувилбар хайлтад идэвхтэй</span>{% elif document.active_version_id and latest and document.active_version_id == latest.id %}<span class="badge active-note">Хайлтад идэвхтэй</span>{% endif %}
+        </div>
+      </div>
+      <div class="row-actions">{% if latest %}<a class="button-link" href="{{ url_for('documents.version', version_id=latest.id, return_to=return_to ~ '#doc-' ~ document.id) }}">Нээх</a>{% endif %}
+        {% if item.versions %}<details class="history"><summary>Түүх · {{ item.versions|length }}</summary><div class="history-list">{% for version in item.versions %}<a href="{{ url_for('documents.version', version_id=version.id, return_to=return_to ~ '#doc-' ~ document.id) }}"><span>{{ version.version_number }}-р хувилбар</span><span class="badge status-{{ version.state }}">{{ status_labels.get(version.state, version.state) }}</span>{% if document.active_version_id == version.id %}<small>Хайлтад идэвхтэй</small>{% endif %}</a>{% endfor %}</div></details>{% endif %}
+        {% if document.state != 'deleted' %}<details class="management"><summary>Удирдах</summary><form method="post" action="{{ url_for('documents.delete', document_id=document.id) }}" class="busy-form" data-confirm="‘{{ document.title }}’ баримтыг устгах уу? Энэ үйлдэл хайлтын индексийг устгана."><input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="return_to" value="{{ return_to }}"><button class="quiet danger">{% if document.state == 'deleting' %}Устгал дахин оролдох{% else %}Баримт устгах{% endif %}</button></form></details>{% endif %}
+      </div>
+    </article>{% endfor %}
+  </section>
+  {% endfor %}
+{% elif total == 0 and not q and not status and not language and not file_type %}
+  <div class="empty"><span>↗</span><h3>Эхний баримтаа энд нэмнэ үү.</h3><p>«Баримт нэмэх» товчоор company policy баримтуудаа байршуулна уу.</p></div>
+{% else %}<div class="empty"><h3>Эдгээр нөхцөлөөр баримт олдсонгүй.</h3><p>Шүүлтээ өөрчлөх эсвэл арилгана уу.</p><a href="{{ url_for('documents.documents') }}">Бүх баримт харах</a></div>{% endif %}
+{% if pages > 1 %}<nav class="pagination" aria-label="Хуудас сонгох">{% set prev = page - 1 %}{% set next = page + 1 %}{% if page > 1 %}<a href="{{ url_for('documents.documents', **dict(query_params, page=prev)) }}">← Өмнөх</a>{% endif %}<span>{{ page }} / {{ pages }} хуудас</span>{% if page < pages %}<a href="{{ url_for('documents.documents', **dict(query_params, page=next)) }}">Дараах →</a>{% endif %}</nav>{% endif %}
 {% endblock %}

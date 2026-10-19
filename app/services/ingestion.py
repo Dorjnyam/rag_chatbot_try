@@ -9,15 +9,27 @@ from ..models import Document, DocumentVersion, now, uid
 from .storage import fingerprint, mutation_lock, path, read_json, write_json
 from .parsing import PARSER_REVISION, parse_bounded, native_fingerprint
 from .chunking import chunk
-from .gemini import provider
+from .providers import provider
 from .vectorstore import store
+from . import sparse
 
 
-def index_config():
+def index_config(provider_name=None):
     c = current_app.config
+    selected = (provider_name or c.get("AI_PROVIDER", "gemini")).casefold()
+    if selected == "openai":
+        model, dimensions = c["OPENAI_EMBEDDING_MODEL"], c["OPENAI_EMBEDDING_DIMENSIONS"]
+        fit_revision = "openai-tokenfit-v1"
+    elif selected == "gemini":
+        model = c["GEMINI_EMBEDDING_MODEL"] if provider_name else c["EMBEDDING_MODEL"]
+        dimensions = c["GEMINI_EMBEDDING_DIMENSIONS"] if provider_name else c["EMBEDDING_DIMENSIONS"]
+        fit_revision = "gemini-bytefit-v1"
+    else:
+        raise ValueError("Target provider must be openai or gemini.")
     return dict(parser=PARSER_REVISION, strategy="characters-v1", chunk_size=c["CHUNK_SIZE"], chunk_overlap=c["CHUNK_OVERLAP"],
-        embedding_model=c["EMBEDDING_MODEL"], dimensions=c["EMBEDDING_DIMENSIONS"], normalization="l2-v1", ocr_languages=c["OCR_LANGUAGES"],
-        ocr_min_characters=c["OCR_MIN_CHARACTERS"], forced_pages=[], embedding_input_guard="utf8-1900-v1", native_tools=native_fingerprint(c))
+        provider=selected, embedding_model=model, dimensions=dimensions, normalization="l2-v1", chunk_fitting=fit_revision,
+        ocr_languages=c["OCR_LANGUAGES"], ocr_min_characters=c["OCR_MIN_CHARACTERS"], forced_pages=[],
+        embedding_input_guard="utf8-1900-v1", native_tools=native_fingerprint(c))
 
 
 def get_document(id_):
@@ -127,7 +139,7 @@ def approve(version_id, page_choices=None):
         return version
 
 
-def process(version_id):
+def process(version_id, require_review=False):
     with mutation_lock():
         version = db.session.get(DocumentVersion, version_id)
         if not version:
@@ -137,6 +149,28 @@ def process(version_id):
             return version
         if version.state == "review":
             raise ValueError("Review and approve the extraction before indexing.")
+        # Review versions can outlive a provider switch. Bind only non-active,
+        # unindexed builds to the selected embedding space; retain extraction choices.
+        target_config = index_config()
+        old_config = version.config or {}
+        identity = (old_config.get("provider", "gemini"), old_config.get("embedding_model"), old_config.get("dimensions"))
+        target_identity = (target_config["provider"], target_config["embedding_model"], target_config["dimensions"])
+        if identity != target_identity:
+            if document.active_version_id == version.id:
+                raise ValueError("Cannot change embedding configuration of an active version; prepare a provider migration.")
+            previous_collection = version.collection_name
+            store().delete_version(previous_collection, version.id)
+            sparse.delete_index(version.id)
+            for key in ("parser", "ocr_languages", "ocr_min_characters", "forced_pages", "native_tools"):
+                if key in old_config:
+                    target_config[key] = old_config[key]
+            version.config = target_config
+            version.config_hash = fingerprint(target_config)
+            version.collection_name = "rag_" + version.config_hash[:24]
+            version.expected_chunks = 0
+            version.manifest_path = None
+            version.error = None
+            db.session.commit()
         version.started_at, version.finished_at, version.error = now(), None, None
         deadline = time.monotonic() + current_app.config["PROCESS_TIMEOUT"]
         client = None
@@ -155,7 +189,7 @@ def process(version_id):
                     write_json(relative, artifact)
                 version.extraction_path = relative
                 version.warnings = artifact["warnings"]
-                version.review_required = bool(artifact["warnings"])
+                version.review_required = bool(artifact["warnings"]) or require_review
                 db.session.commit()
             artifact = read_json(version.extraction_path)
             if version.review_required and not version.approved_at:
@@ -183,6 +217,9 @@ def process(version_id):
                 vectors.upsert(version.collection_name, batch, embedded)
             if vectors.ids(version.collection_name, version.id) != {c["id"] for c in chunks}:
                 raise ValueError("Chroma verification failed: indexed IDs differ from the manifest.")
+            sparse_ids = sparse.write_index(version.id, chunks, document.title, version.original_filename)
+            if sparse_ids != {c["id"] for c in chunks}:
+                raise ValueError("BM25 verification failed: indexed IDs differ from the manifest.")
             if time.monotonic() > deadline:
                 raise ValueError("Indexing exceeded the processing deadline.")
             version.state, version.finished_at = "ready", now()
@@ -228,6 +265,7 @@ def delete_document(document_id):
             store().delete_version(version.collection_name, version.id)
             if store().ids(version.collection_name, version.id):
                 raise ValueError("Vectors remain; document stays deleting. Retry cleanup.")
+            sparse.delete_index(version.id)
         others = db.session.scalars(select(DocumentVersion).join(Document, Document.id == DocumentVersion.document_id)
             .where(Document.id != document.id, Document.state != "deleted")).all()
         referenced = set()
@@ -276,6 +314,18 @@ def reconcile(repair=False):
                         document = db.session.get(Document, version.document_id)
                         if document.active_version_id == version.id:
                             document.active_version_id = None
+                try:
+                    sparse_records = sparse.load_index(version.id)
+                except (ValueError, OSError):
+                    sparse_records = None
+                sparse_ids = {item["id"] for item in sparse_records or []}
+                if sparse_records is None or sparse_ids != expected:
+                    issues.append(dict(kind="sparse_index_missing_or_mismatched", version=version.id, expected=len(expected), actual=len(sparse_ids)))
+                    if repair:
+                        version.state, version.error = "failed", "Reconciliation found an incomplete sparse index; reindex this version."
+                        document = db.session.get(Document, version.document_id)
+                        if document.active_version_id == version.id:
+                            document.active_version_id = None
         for collection, id_, metadata in store().all_records():
             version = known.get(metadata.get("version_id"))
             if not version or version.state in ("failed", "deleted") or collection != version.collection_name:
@@ -287,3 +337,29 @@ def reconcile(repair=False):
         if repair:
             db.session.commit()
         return issues
+
+
+def backfill_sparse():
+    """Rebuild BM25 indexes for legacy ready versions from persisted Chroma chunks."""
+    from . import sparse
+    with mutation_lock():
+        versions = db.session.execute(select(DocumentVersion, Document).join(Document, Document.id == DocumentVersion.document_id)
+            .where(Document.state == "active", DocumentVersion.state == "ready")).all()
+        db.session.commit()
+        results = []
+        for version, document in versions:
+            try:
+                current = sparse.load_index(version.id)
+            except (ValueError, OSError):
+                current = None
+            expected = store().ids(version.collection_name, version.id)
+            if current is not None and {item["id"] for item in current} == expected:
+                results.append(dict(version=version.id, status="current", chunks=len(expected)))
+                continue
+            data = store().collection(version.collection_name).get(where={"version_id": version.id}, include=["documents", "metadatas"])
+            chunks = [dict(id=chunk_id, text=text, metadata=metadata) for chunk_id, text, metadata in zip(data["ids"], data["documents"], data["metadatas"])]
+            written = sparse.write_index(version.id, chunks, document.title, version.original_filename)
+            if written != expected:
+                raise ValueError(f"BM25 backfill verification failed for version {version.id}")
+            results.append(dict(version=version.id, status="rebuilt", chunks=len(written)))
+        return results

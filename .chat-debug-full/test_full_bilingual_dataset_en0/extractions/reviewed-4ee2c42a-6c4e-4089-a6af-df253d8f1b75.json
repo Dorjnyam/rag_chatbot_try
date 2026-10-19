@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "text": "Чөлөө",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "СУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    },
+    {
+      "text": "Дүрэм",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 3
+    },
+    {
+      "text": "Чөлөөний хүсэлтийг эхлэх өдрөөс 5 ажлын өдрийн өмнө өгнө.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 4
+    },
+    {
+      "text": "Багийн ахлагч чөлөөний хүсэлтийг батална.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 5
+    },
+    {
+      "text": "Policy code | LEAVE-01",
+      "heading": "Дүрэм",
+      "kind": "table",
+      "method": "native",
+      "block": 6
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.",
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

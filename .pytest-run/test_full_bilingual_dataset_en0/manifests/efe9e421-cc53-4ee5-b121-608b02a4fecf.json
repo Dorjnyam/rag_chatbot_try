@@ -1,0 +1,38 @@
+[
+  {
+    "id": "c873bfad-4aeb-59bd-8996-a539ee95667a",
+    "metadata": {
+      "block_start": 1,
+      "block_end": 2,
+      "heading": "",
+      "extraction_method": "native",
+      "char_start": 0,
+      "char_end": 54,
+      "partial_table": false,
+      "chunk_ordinal": 0,
+      "content_hash": "53f397cbc664011e241146973161ea16984ab6d2edfd1a6ffaa0fd1acbb821cb",
+      "document_id": "fd7acf16-35bb-44da-9b81-8a5a990db80d",
+      "version_id": "efe9e421-cc53-4ee5-b121-608b02a4fecf",
+      "language": "en",
+      "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+    }
+  },
+  {
+    "id": "ad1a64b2-36b9-5614-8949-7aa7e8796332",
+    "metadata": {
+      "block_start": 3,
+      "block_end": 6,
+      "heading": "Rules",
+      "extraction_method": "native",
+      "char_start": 0,
+      "char_end": 122,
+      "partial_table": false,
+      "chunk_ordinal": 1,
+      "content_hash": "ba3effe651ca506844c85dc5731d73e8c13451ba2c303ce4c44abb0075bbff86",
+      "document_id": "fd7acf16-35bb-44da-9b81-8a5a990db80d",
+      "version_id": "efe9e421-cc53-4ee5-b121-608b02a4fecf",
+      "language": "en",
+      "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+    }
+  }
+]

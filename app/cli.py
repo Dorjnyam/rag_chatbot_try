@@ -9,8 +9,42 @@ from .extensions import db
 
 
 def register(app):
+    @app.cli.group("migrate-indexes")
+    def migrate_indexes():
+        """Move active documents between embedding providers without deleting old indexes."""
+
+    @migrate_indexes.command("prepare")
+    @click.option("--target-provider", type=click.Choice(["openai", "gemini"], case_sensitive=False), required=True)
+    @click.option("--manifest", type=str, help="Resumable JSON manifest path under the application data directory.")
+    @click.option("--dry-run", is_flag=True, help="Report eligibility and rough token estimate without API calls or changes.")
+    def migrate_prepare(target_provider, manifest, dry_run):
+        from .services.index_migration import prepare
+        try:
+            result = prepare(target_provider, manifest, dry_run)
+        except Exception as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+
+    @migrate_indexes.command("activate")
+    @click.option("--manifest", required=True)
+    def migrate_activate(manifest):
+        from .services.index_migration import activate
+        try:
+            click.echo(json.dumps(activate(manifest), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(str(exc)) from exc
+
+    @migrate_indexes.command("rollback")
+    @click.option("--manifest", required=True)
+    def migrate_rollback(manifest):
+        from .services.index_migration import rollback
+        try:
+            click.echo(json.dumps(rollback(manifest), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(str(exc)) from exc
+
     @app.cli.command("doctor")
-    @click.option("--live", is_flag=True, help="Make small billable Gemini calls.")
+    @click.option("--live", is_flag=True, help="Make small billable calls to the selected provider.")
     def doctor(live):
         """Report runtime dependencies without exposing credentials."""
         import platform
@@ -34,15 +68,21 @@ def register(app):
             click.echo("OCR language check: unavailable")
         from .services.vectorstore import store
         click.echo(f"Chroma: {store().client.heartbeat()}")
-        click.echo("Gemini key: " + ("configured" if current_app.config["GEMINI_API_KEY"] else "missing"))
+        selected = current_app.config["AI_PROVIDER"].upper()
+        click.echo(f"AI provider: {selected}")
+        click.echo(f"Embedding model/dimensions: {current_app.config['EMBEDDING_MODEL']} / {current_app.config['EMBEDDING_DIMENSIONS']}")
+        click.echo(f"Generation model: {current_app.config['GENERATION_MODEL']}")
+        click.echo(f"{selected} key: " + ("configured" if current_app.config.get(f"{selected}_API_KEY") else "missing"))
+        from .services.retrieval import incompatible_active_count
+        click.echo(f"Active indexes incompatible with selected embeddings: {incompatible_active_count()}")
         if live:
-            from .services.gemini import provider
+            from .services.providers import provider
             client = provider()
             client.embed(["Synthetic learning policy"], "RETRIEVAL_DOCUMENT")
             client.count("Synthetic learning policy")
             client.generate('No evidence. Question: what is the pension rate?', 'Return JSON with status insufficient_evidence, answer, sources as an empty list.')
             client.close()
-            click.echo("Gemini embedding, generation token-counting and generation smoke calls passed.")
+            click.echo(f"{selected} embedding, token counting, and generation smoke calls passed.")
 
     @app.cli.command("process")
     @click.argument("version_id")
@@ -62,6 +102,12 @@ def register(app):
     def reconcile(repair):
         from .services.ingestion import reconcile
         click.echo(json.dumps(reconcile(repair), indent=2))
+
+    @app.cli.command("backfill-sparse")
+    def backfill_sparse():
+        """Build or repair sparse indexes for ready document versions."""
+        from .services.ingestion import backfill_sparse as run_backfill
+        click.echo(json.dumps(run_backfill(), ensure_ascii=False, indent=2))
 
     @app.cli.command("delete-document")
     @click.argument("document_id")
@@ -98,6 +144,70 @@ def register(app):
                 version, duplicate = upload(FileStorage(handle, filename=file.name), file.stem, "mn" if file.stem.endswith("-mn") else "en")
             click.echo(f"{file.name}: {process(version.id).state} ({version.id})")
         click.echo("Review each extraction in Documents, approve it, then process again to index.")
+
+    @app.cli.command("import-folder")
+    @click.argument("directory", type=click.Path(exists=True, file_okay=False, path_type=Path))
+    @click.option("--language", type=click.Choice(["mn", "en", "mixed"]), default="mixed", show_default=True)
+    @click.option("--recursive", is_flag=True, help="Also scan subfolders.")
+    def import_folder(directory, language, recursive):
+        """Import a folder of PDF/DOCX/DOC files and pause each at extraction review."""
+        from werkzeug.datastructures import FileStorage
+        from .services.ingestion import upload, process
+        iterator = directory.rglob("*") if recursive else directory.glob("*")
+        files = sorted(file for file in iterator if file.is_file() and file.suffix.casefold() in (".pdf", ".docx", ".doc"))
+        if not files:
+            raise click.ClickException("Сонгосон хавтсанд PDF, DOCX эсвэл DOC файл олдсонгүй.")
+        failures = []
+        for file in files:
+            try:
+                with file.open("rb") as handle:
+                    version, duplicate = upload(FileStorage(handle, filename=file.name), file.stem, language)
+                state = version.state if version.state == "review" else process(version.id, require_review=True).state
+                marker = " (duplicate)" if duplicate else ""
+                click.echo(f"Staged {file.name}: {state} ({version.id}){marker}")
+            except Exception as exc:
+                failures.append((file, exc))
+                click.echo(f"Failed {file.name.encode('ascii', 'backslashreplace').decode('ascii')}: {str(exc).encode('ascii', 'backslashreplace').decode('ascii')}", err=True)
+        click.echo("Review extracted text in Documents, approve each version, then process it to build indexes.")
+        if failures:
+            raise click.ClickException(f"{len(failures)} files failed; inspect the error output.")
+
+    @app.cli.command("approve-all")
+    @click.option("--reviewed", is_flag=True, required=True,
+        help="Confirm you checked every pending extraction against its original source.")
+    @click.option("--dry-run", is_flag=True, help="List review versions without approving or indexing them.")
+    def approve_all(reviewed, dry_run):
+        """Approve review items and resume failed reviewed builds."""
+        from sqlalchemy import select, or_, and_
+        from .models import Document, DocumentVersion
+        from .services.ingestion import approve, process
+        rows = db.session.execute(select(DocumentVersion, Document)
+            .join(Document, Document.id == DocumentVersion.document_id)
+            .where(Document.state == "active", or_(
+                DocumentVersion.state == "review",
+                and_(DocumentVersion.state == "failed", DocumentVersion.approved_at.is_not(None))))
+            .order_by(Document.title, DocumentVersion.version_number)).all()
+        if not rows:
+            click.echo("Шалгах эсвэл үргэлжлүүлэн боловсруулах хувилбар алга.")
+            return
+        click.echo(f"Found {len(rows)} versions awaiting review.")
+        if dry_run:
+            for version, _document in rows:
+                click.echo(f"Preview version {version.id}")
+            return
+        failures = 0
+        for version, document in rows:
+            try:
+                if version.state == "review":
+                    approve(version.id)
+                result = process(version.id)
+                click.echo(f"Ready: {version.id}")
+            except Exception as exc:
+                failures += 1
+                click.echo(f"Failed: {version.id} ({type(exc).__name__})", err=True)
+        click.echo(f"Completed: {len(rows) - failures}/{len(rows)} versions succeeded.")
+        if failures:
+            raise click.ClickException(f"{failures} versions failed; inspect their state in Documents.")
 
     @app.cli.command("evaluate")
     @click.argument("dataset", type=click.Path(exists=True, path_type=Path))

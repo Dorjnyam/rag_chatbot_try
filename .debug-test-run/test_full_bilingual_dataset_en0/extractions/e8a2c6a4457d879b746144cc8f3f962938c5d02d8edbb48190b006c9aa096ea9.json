@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "text": "Аюулгүй байдал",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "СУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    },
+    {
+      "text": "Дүрэм",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 3
+    },
+    {
+      "text": "Цугларах цэг нь хойд хаалга байна.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 4
+    },
+    {
+      "text": "Галын дохиоллын үед цахилгаан шат ашиглаж болохгүй.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 5
+    },
+    {
+      "text": "Policy code | SAFETY-01",
+      "heading": "Дүрэм",
+      "kind": "table",
+      "method": "native",
+      "block": 6
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.",
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

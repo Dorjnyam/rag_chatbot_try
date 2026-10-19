@@ -1,6 +1,7 @@
 """Transparent retrieval metrics; human review is stored separately."""
 import importlib.metadata
 import json
+import math
 from collections import defaultdict
 from statistics import mean
 from sqlalchemy import select
@@ -14,16 +15,20 @@ def ranking_metrics(retrieved_units, relevant_units, k):
     """A gold unit counts once even if several overlapping chunks contain it."""
     relevant = set(relevant_units)
     if not relevant:
-        return dict(recall=None, precision=None, reciprocal_rank=None)
-    seen, first, relevant_results = set(), None, 0
+        return dict(recall=None, precision=None, reciprocal_rank=None, hit_rate=None, ndcg=None)
+    seen, first, relevant_results, dcg = set(), None, 0, 0.0
     for rank, units in enumerate(retrieved_units[:k], 1):
         found = set(units) & relevant
         if found and first is None:
             first = rank
         if found - seen:
+            gain = len(found - seen)
             relevant_results += 1
+            dcg += (2 ** gain - 1) / math.log2(rank + 1)
         seen.update(found)
-    return dict(recall=len(seen) / len(relevant), precision=relevant_results / k, reciprocal_rank=1 / first if first else 0)
+    ideal = sum((2 ** 1 - 1) / math.log2(rank + 1) for rank in range(1, min(len(relevant), k) + 1))
+    return dict(recall=len(seen) / len(relevant), precision=relevant_results / k,
+        reciprocal_rank=1 / first if first else 0, hit_rate=float(bool(seen)), ndcg=dcg / ideal if ideal else 0.0)
 
 
 def load_questions(file):
@@ -32,6 +37,8 @@ def load_questions(file):
     for q in questions:
         if q["id"] in seen or q["language"] not in ("mn", "en") or q["split"] not in ("dev", "test") or not isinstance(q["answerable"], bool):
             raise ValueError("Invalid or duplicate evaluation question.")
+        if q.get("input_language", q["language"]) not in ("mn", "en", "mn_cyrl", "mn_latn", "mixed", "unknown"):
+            raise ValueError("Invalid evaluation input language category.")
         if q["answerable"] and not q.get("evidence"):
             raise ValueError("Answerable evaluation questions require gold evidence.")
         seen.add(q["id"])
@@ -70,7 +77,8 @@ def aggregate(records):
     groups = defaultdict(list)
     for direction, metrics, timings, status in records:
         groups[direction].append((metrics, timings, status))
-        groups["overall"].append((metrics, timings, status))
+        if not direction.startswith("input:"):
+            groups["overall"].append((metrics, timings, status))
     result = {}
     for direction, rows in groups.items():
         group = dict(count=len(rows), errors=sum(status == "error" for _, _, status in rows))
@@ -78,7 +86,7 @@ def aggregate(records):
         for key in sorted(keys):
             values = [m[key] for m, _, _ in rows if isinstance(m.get(key), (int, float))]
             group[key] = dict(mean=mean(values), count=len(values)) if values else dict(mean=None, count=0)
-        for stage in ("query_embedding_ms", "vector_search_ms", "generation_ms", "total_ms"):
+        for stage in ("query_embedding_ms", "vector_search_ms", "sparse_search_ms", "query_rewriting_ms", "reranking_ms", "context_ms", "generation_ms", "total_ms"):
             values = sorted(t.get(stage, 0) for _, t, _ in rows)
             group[stage] = dict(p50=percentile(values, .5), p95=percentile(values, .95))
         result[direction] = group
@@ -114,7 +122,7 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
     revision = fingerprint(questions)
     snapshot = dict(corpus=corpus, corpus_hash=fingerprint(corpus), dataset_hash=revision, split=split,
         reviewed=all(q.get("review_status") == "reviewed" for q in selected),
-        packages={name: importlib.metadata.version(name) for name in ("Flask", "SQLAlchemy", "chromadb", "google-genai", "pypdf", "python-docx", "pytesseract")})
+        packages={name: importlib.metadata.version(name) for name in ("Flask", "SQLAlchemy", "chromadb", "google-genai", "openai", "tiktoken", "pypdf", "python-docx", "pytesseract")})
     run = EvaluationRun(id=uid(), snapshot=snapshot, config=dict(config_snapshot(k), generate=generate))
     db.session.add(run)
     for q in selected:
@@ -132,12 +140,21 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
         metrics.update({"document_" + key: value for key, value in ranking_metrics([{d} for d in documents], {g["document_id"] for g in gold}, k).items()})
         metrics["returned_count"] = len(hits)
         metrics["answerable"] = int(q["answerable"])
+        category = q.get("input_language", "mn_cyrl" if q["language"] == "mn" else "en")
+        metrics["language_detection_accuracy"] = float(log.config.get("input_language") == category)
+        expected_normalized = q.get("expected_normalized_query")
+        if expected_normalized:
+            metrics["normalization_exact_match"] = float(expected_normalized in log.config.get("query_candidates", []))
         if generate:
             metrics["abstention_match"] = int((log.status == "insufficient_evidence") == (not q["answerable"])) if log.status != "error" else 0
             metrics["citation_id_validity"] = 0 if log.status == "error" else 1
+            from .services.language import answer_is_mongolian
+            metrics["answer_language_compliance"] = float(answer_is_mongolian(log.answer))
         db.session.add(EvaluationResult(run_id=run.id, question_id=q["id"], question_revision=revision, query_log_id=log.id, metrics=metrics))
         db.session.commit()
+        category = q.get("input_language", "mn_cyrl" if q["language"] == "mn" else "en")
         records.append((q["direction"], metrics, log.timings, log.status))
+        records.append(("input:" + category, metrics, log.timings, log.status))
     run.metrics = aggregate(records)
     run.finished_at = now()
     db.session.commit()

@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "text": "Safety",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "SYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    },
+    {
+      "text": "Rules",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 3
+    },
+    {
+      "text": "The assembly point is the north gate.",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 4
+    },
+    {
+      "text": "Do not use elevators during a fire alarm.",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 5
+    },
+    {
+      "text": "Policy code | SAFETY-01",
+      "heading": "Rules",
+      "kind": "table",
+      "method": "native",
+      "block": 6
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.",
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

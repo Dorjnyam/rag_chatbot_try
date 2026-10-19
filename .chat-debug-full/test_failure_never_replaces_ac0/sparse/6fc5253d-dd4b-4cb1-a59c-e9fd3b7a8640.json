@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "version_id": "6fc5253d-dd4b-4cb1-a59c-e9fd3b7a8640",
+  "content_hash": "e23c39ba37c5c6a74c042451c8d656550b82d5fce69e897649b733e8b7d6f8d2",
+  "documents": [
+    {
+      "id": "6e1cbe77-c63c-5edd-aa0b-04dbef193696",
+      "text": "Leave\n\nUpdated leave policy: ten days.",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "Leave",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 38,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "a682cff4b6f92384dfb783c5b18d3fad3467a93873c8ce5f6e3aa2c7023b26a8",
+        "document_id": "7a6e92a4-d068-4c45-9164-95d837a4aa8d",
+        "version_id": "6fc5253d-dd4b-4cb1-a59c-e9fd3b7a8640",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "Leave policy",
+      "filename": "policy.docx",
+      "terms": [
+        "leave",
+        "policy",
+        "policy.docx",
+        "leave",
+        "leave",
+        "updated",
+        "leave",
+        "policy",
+        "ten",
+        "days"
+      ]
+    }
+  ]
+}

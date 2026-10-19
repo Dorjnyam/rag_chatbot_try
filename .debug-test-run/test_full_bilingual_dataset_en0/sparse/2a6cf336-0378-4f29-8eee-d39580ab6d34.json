@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "version_id": "2a6cf336-0378-4f29-8eee-d39580ab6d34",
+  "content_hash": "0f59f9eae5c5764f3c453326e006f2176a50025f644a61ff91efc0e296dac32c",
+  "documents": [
+    {
+      "id": "f3de51e1-38ad-50ca-9ccc-c0264e6b386c",
+      "text": "Чөлөө\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 57,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "7f669f2578f04ffb34257e1ce08078d2013a23ca491424f7ffde87e37c368f0c",
+        "document_id": "156b9e20-6d08-4281-b724-4e49d5d07ca0",
+        "version_id": "2a6cf336-0378-4f29-8eee-d39580ab6d34",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "leave-mn",
+      "filename": "leave-mn.docx",
+      "terms": [
+        "leave-mn",
+        "leave-mn.docx",
+        "чөлөө",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "5d1f8c43-041b-536d-98ea-d871358057a4",
+      "text": "Дүрэм\n\nЧөлөөний хүсэлтийг эхлэх өдрөөс 5 ажлын өдрийн өмнө өгнө.\n\nБагийн ахлагч чөлөөний хүсэлтийг батална.\n\nPolicy code | LEAVE-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 131,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "64f055d83d3c5ce58b1ebea5e8c34b00fa7a33527d14a54730d1c56d077fc3d0",
+        "document_id": "156b9e20-6d08-4281-b724-4e49d5d07ca0",
+        "version_id": "2a6cf336-0378-4f29-8eee-d39580ab6d34",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "leave-mn",
+      "filename": "leave-mn.docx",
+      "terms": [
+        "leave-mn",
+        "leave-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "чөлөөний",
+        "хүсэлтийг",
+        "эхлэх",
+        "өдрөөс",
+        "5",
+        "ажлын",
+        "өдрийн",
+        "өмнө",
+        "өгнө",
+        "багийн",
+        "ахлагч",
+        "чөлөөний",
+        "хүсэлтийг",
+        "батална",
+        "policy",
+        "code",
+        "leave-01"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "version_id": "39948354-0b62-4fa7-8da9-a4f491a65050",
+  "content_hash": "2dd4aa49eec1e5ce6eb1da3a25cf7ad647685c7218a754d73ceeb52026c1a6c3",
+  "documents": [
+    {
+      "id": "571df7f4-0665-5399-a807-13b03f41230c",
+      "text": "Visitors\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 57,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "ca71a3f5cdb5bd31fbf801f4451bb3cdf8661b6f8c4fc21efb7d184968efb948",
+        "document_id": "62b6a8dd-d0ec-4fef-8620-93bda544d30c",
+        "version_id": "39948354-0b62-4fa7-8da9-a4f491a65050",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "visitors-en",
+      "filename": "visitors-en.docx",
+      "terms": [
+        "visitors-en",
+        "visitors-en.docx",
+        "visitors",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "500d3a56-542f-57f1-90dd-4c7eb158784c",
+      "text": "Rules\n\nVisitor access ends at 18:00.\n\nVisitors must remain with their host in the laboratory.\n\nPolicy code | VISITORS-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 120,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "c95c488eaa93b155c38d538b54be536b2e2b6a318df28b5cd7870eead6d48f2d",
+        "document_id": "62b6a8dd-d0ec-4fef-8620-93bda544d30c",
+        "version_id": "39948354-0b62-4fa7-8da9-a4f491a65050",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "visitors-en",
+      "filename": "visitors-en.docx",
+      "terms": [
+        "visitors-en",
+        "visitors-en.docx",
+        "rules",
+        "rules",
+        "visitor",
+        "access",
+        "ends",
+        "at",
+        "18",
+        "00",
+        "visitors",
+        "must",
+        "remain",
+        "with",
+        "their",
+        "host",
+        "in",
+        "the",
+        "laboratory",
+        "policy",
+        "code",
+        "visitors-01"
+      ]
+    }
+  ]
+}

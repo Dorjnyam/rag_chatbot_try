@@ -1,7 +1,7 @@
 # Evidence Lab — a learning RAG chatbot
 
 A local Flask application exposing document extraction, chunking, semantic search,
-evidence selection, grounded Gemini answers, and evaluation. Mongolian Cyrillic and
+evidence selection, grounded OpenAI or Gemini answers, and evaluation. Mongolian Cyrillic and
 English are first-class evaluation groups. Included evaluation fixtures are synthetic;
 approved company documents imported locally stay in the ignored `instance/` directory.
 
@@ -16,7 +16,10 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.lock.txt
 Copy-Item .env.example .env
 ```
 
-Set `GEMINI_API_KEY` and a random `FLASK_SECRET_KEY` in `.env`. Do not commit it.
+Set `OPENAI_API_KEY` (the selected provider in the example) and a random
+`FLASK_SECRET_KEY` in `.env`. Leave the Gemini key empty unless switching to Gemini.
+Switch providers with `AI_PROVIDER=openai` or `AI_PROVIDER=gemini`; only the selected
+provider needs a key. Do not commit `.env`.
 If you leave the secret unset, a local random key is generated in `instance/session.key`.
 No API key is included or simulated in the application.
 
@@ -64,7 +67,40 @@ The baseline therefore splits embedding chunks at a conservative **1,900 UTF-8 b
 safety cap**, recorded in the index fingerprint. This is not an exact token count
 or a claim about an undocumented tokenizer. Overlong questions are rejected with
 a shortening hint; text is never silently truncated. Generation uses its own
-supported token-counting endpoint. Live smoke tests must still verify provider behavior.
+OpenAI token budgeting uses local `tiktoken`; unknown generation model mappings use
+the conservative `o200k_base` tokenizer. No remote token-count request is made.
+
+### Switching existing indexes from Gemini to OpenAI
+
+Embedding spaces are provider-specific. Existing Gemini vectors cannot be queried
+with OpenAI embeddings, even when dimensions match. Migration builds new indexes
+from each active ready version’s stored Chroma chunks; it does not rerun OCR or
+approve review items. Preparation makes billable embedding calls, so first inspect
+the no-call estimate:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --target-provider openai --dry-run
+.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --target-provider openai --manifest provider-cutover
+```
+
+Preparation resumes with the same manifest and leaves current active indexes
+untouched. For cutover, set `AI_PROVIDER=openai`, restart Flask, then run:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app migrate-indexes activate --manifest provider-cutover
+```
+
+Activation changes all migrated active pointers in one transaction. Old vectors
+remain available. To restore the prior mapping, set `AI_PROVIDER=gemini`, restart,
+then run:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app migrate-indexes rollback --manifest provider-cutover
+```
+
+Manifests live under `instance/`. Run `doctor` to check provider, key presence, and
+index compatibility. Actual API access, migration cost, and Mongolian retrieval and
+answer quality remain pending until a key is supplied and reviewed evaluations run.
 
 ## The pipeline and ownership
 
@@ -73,16 +109,16 @@ flowchart LR
   Upload --> Parse[Native parsing / DOC conversion / OCR]
   Parse --> Review[Inspect extraction]
   Review --> Chunk[Character chunks]
-  Chunk --> Embed[Gemini document embeddings]
+  Chunk --> Embed[Selected provider document embeddings]
   Embed --> Chroma[(Chroma)]
   Chroma --> Verify[Verify exact IDs]
   Verify --> PG[(PostgreSQL active version)]
-  Question --> QE[Gemini query embedding]
+  Question --> QE[Selected provider query embedding]
   PG --> Retrieve[Filter active versions]
   QE --> Retrieve
   Chroma --> Retrieve
   Retrieve --> Context[Budgeted evidence context]
-  Context --> Answer[Gemini answer + citation validation]
+  Context --> Answer[Selected provider answer + citation validation]
   Answer --> Trace[Query history / evaluation]
 ```
 
@@ -128,6 +164,8 @@ for its full run so the active corpus cannot change between questions.
 ```powershell
 .venv\Scripts\python.exe -m flask --app app process VERSION_UUID
 .venv\Scripts\python.exe -m flask --app app approve VERSION_UUID --reviewed
+.venv\Scripts\python.exe -m flask --app app approve-all --reviewed --dry-run
+.venv\Scripts\python.exe -m flask --app app approve-all --reviewed
 .venv\Scripts\python.exe -m flask --app app reconcile
 .venv\Scripts\python.exe -m flask --app app reconcile --repair
 .venv\Scripts\python.exe -m flask --app app delete-document DOCUMENT_UUID
@@ -152,7 +190,9 @@ state. Metadata tombstones remain for historical query/evaluation records.
 | Embedding tasks | `RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` |
 | Chunks / overlap | 1,800 / 250 characters |
 | Embedding input guard | Split further at 1,900 UTF-8 bytes; not an exact token count |
-| Retrieval | Semantic top-k 5; controls for 1, 3, 5, 10 |
+| Retrieval | Dense + BM25 hybrid; 15 candidates per branch; RRF `k=60`; final top-k 5 |
+| Context | Up to 6 deduplicated evidence chunks within the 8,000-token context budget |
+| Optional optimization | Local cross-encoder and conditional selected-provider query rewrite; both disabled by default |
 | Corpus filters | Active versions; optional document and language |
 | Context / history / total input | 8,000 / 2,000 / 12,000 generation-model tokens |
 | History / output | Last four question-answer turns / up to 1,000 output tokens |
@@ -164,10 +204,30 @@ API retries honor HTTP `Retry-After` and Google's structured `google.rpc.RetryIn
 cooldowns, within the operation deadline. Bulk indexing can therefore take longer
 on an account with a low embedding quota; verified versions remain available.
 
-Queries search all evidence languages unless filtered. No automatic translation,
-rewriting, reranking or BM25 is applied. History is conversational background, not
-policy evidence; retrieval embeds only the current question. An ambiguous follow-up
-should receive clarification rather than invented policy facts.
+Queries search all evidence languages unless explicitly filtered. Language handling
+keeps the original question, detects Cyrillic Mongolian, romanized Mongolian, English,
+mixed or uncertain input, and adds a conservative Mongolian candidate when the local
+lexicon can normalize whole words. The answer policy always requires Mongolian Cyrillic.
+History is conversational background, not policy evidence.
+
+Each ready version has a BM25 artifact under the application data directory, with the
+same canonical chunk IDs as Chroma. Newly processed versions verify both indexes
+before activation. Build or repair sparse indexes for existing versions with:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app backfill-sparse
+```
+
+Until backfill completes, queries that include a version without a valid sparse index
+fall back to dense retrieval and record the degraded state in the query configuration.
+For an explicit dense-only rollback, set `RETRIEVAL_MODE=dense`.
+
+To enable a local cross-encoder, install the optional package list, set
+`RERANKER_MODEL_PATH` to a model directory already present on disk, then enable
+`RERANKING_ENABLED=true`. The model loader never downloads weights. Check Mongolian,
+English and romanized query performance before relying on its ordering. Conditional
+query rewriting is opt-in through `QUERY_REWRITING_ENABLED=true` and uses at most one
+validated rewrite request for mixed or uncertain queries.
 
 One collection is created per index-configuration fingerprint. Chunk IDs derive
 from build UUID, configuration and ordinal. Staged vectors are excluded using active
@@ -192,6 +252,9 @@ and absent policies.
 # Existing committed samples: import (does not approve extraction automatically)
 .venv\Scripts\python.exe -m flask --app app import-samples evaluation/corpus
 
+# Stage every PDF/DOCX/DOC in a company folder for extraction review (no embeddings yet)
+.venv\Scripts\python.exe -m flask --app app import-folder "C:\Users\dorjnyam.e\Downloads\RAG\RAG" --recursive --language mixed
+
 # To generate a separate fresh corpus, choose an EMPTY directory
 .venv\Scripts\python.exe -m flask --app app make-samples --directory instance/new-corpus
 
@@ -200,6 +263,15 @@ and absent policies.
 .venv\Scripts\python.exe -m flask --app app evaluate evaluation/corpus/questions.jsonl --split dev
 .venv\Scripts\python.exe -m flask --app app evaluate evaluation/corpus/questions.jsonl --split dev --generate
 ```
+
+`import-folder` stages supported files in the Documents review queue and does not
+embed or activate them. Inspect extracted text in the app, approve each version, then
+process it to build the dense and sparse indexes.
+
+`approve-all --reviewed --dry-run` previews every version awaiting review. Running
+`approve-all --reviewed` records the review confirmation for all of them, then
+embeds and activates each version. It can make billable provider embedding calls; use
+it only after confirming the extracted text against the source files.
 
 `--allow-unreviewed` permits an engineering smoke run and records that limitation
 in the snapshot. It does not waive human acceptance. Open **Evaluation** for metrics,
@@ -252,8 +324,8 @@ not been demonstrated by mocked API tests.
 | Heading-aware chunks/title enrichment | Section context can disambiguate rules | Recall, faithfulness, index size |
 | 2k/4k/8k context budget, fixed retrieval | More evidence can help or dilute | Correctness, citation coverage, token use |
 
-The latter experimental algorithms are deliberately not implemented in the baseline.
-Select and verify their dependencies when each experiment begins.
+Hybrid BM25/RRF and multilingual query handling are implemented. The optional
+cross-encoder remains unverified for Mongolian until a real, reviewed corpus is tested.
 
 ## Testing and learning checkpoints
 
@@ -270,6 +342,12 @@ and DOC conversion tests run when their tools exist and otherwise report skips.
 API doubles never establish Gemini model quality. Integration tests rebuild tables
 only inside the explicitly disposable `rag_test*` database. An opt-in live smoke is
 `doctor --live`; no real-key tests run automatically.
+
+The multilingual synthetic smoke set is available at
+`evaluation/corpus/questions-multilingual-synthetic.jsonl`. It is marked as draft and
+does not establish retrieval quality. Compare modes on the same frozen corpus and
+reviewed labels using separate runs, changing `RETRIEVAL_MODE`, reranking and rewrite
+flags between runs, then use `compare-runs`.
 
 | Phase | Inspect and learn | Validate | Explain independently |
 |---|---|---|---|

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "target_provider": "openai",
+  "target_config": {
+    "parser": "ordered-blocks-v1",
+    "strategy": "characters-v1",
+    "chunk_size": 1800,
+    "chunk_overlap": 250,
+    "provider": "openai",
+    "embedding_model": "text-embedding-3-small",
+    "dimensions": 128,
+    "normalization": "l2-v1",
+    "chunk_fitting": "openai-tokenfit-v1",
+    "ocr_languages": "mon+eng",
+    "ocr_min_characters": 40,
+    "forced_pages": [],
+    "embedding_input_guard": "utf8-1900-v1",
+    "native_tools": {
+      "TESSERACT_CMD": "unavailable",
+      "LIBREOFFICE_CMD": "a2823391857db1dd8ebbd8234267f9ec58ec7e5b5fc434665c0ecec4671cb988",
+      "mon": "unavailable",
+      "eng": "unavailable"
+    }
+  },
+  "created_at": 1792402093.6601923,
+  "status": "rolled_back",
+  "entries": [
+    {
+      "document_id": "ac14f897-fe1f-4f89-9a2c-362b83d09f58",
+      "source_version_id": "5a350dd4-1aa0-4a28-87b9-eae162d0865a",
+      "target_version_id": "d58673af-d1ee-48c3-8794-62c4f9b5e3cb",
+      "source_config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996",
+      "source_provider": "gemini",
+      "status": "ready",
+      "chunks": 1,
+      "target_config_hash": "5f8efa7b4f5a0c5b4dec567a992e72ee7f097eb448655476e87858d3b0e5ffc2"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "version_id": "v1",
+  "content_hash": "a1d43fc19a6b149317ae8099e60ff42f5934f7cf713f4884e353b013fc8567a2",
+  "documents": [
+    {
+      "id": "leave",
+      "text": "Ажилтны ээлжийн амралт таван өдөр",
+      "metadata": {
+        "version_id": "v1",
+        "document_id": "d1",
+        "heading": "Хүний нөөц"
+      },
+      "title": "Ажилтны журам",
+      "filename": "hr-policy.docx",
+      "terms": [
+        "ажилтны",
+        "журам",
+        "hr-policy.docx",
+        "хүний",
+        "нөөц",
+        "ажилтны",
+        "ээлжийн",
+        "амралт",
+        "таван",
+        "өдөр"
+      ]
+    },
+    {
+      "id": "code",
+      "text": "POL-04 журам",
+      "metadata": {
+        "version_id": "v1",
+        "document_id": "d1",
+        "heading": ""
+      },
+      "title": "Ажилтны журам",
+      "filename": "hr-policy.docx",
+      "terms": [
+        "ажилтны",
+        "журам",
+        "hr-policy.docx",
+        "pol-04",
+        "журам"
+      ]
+    }
+  ]
+}

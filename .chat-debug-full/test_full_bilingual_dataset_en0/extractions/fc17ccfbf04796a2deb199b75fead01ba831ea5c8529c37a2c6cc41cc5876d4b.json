@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "text": "Зайнаас ажиллах",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "СУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    },
+    {
+      "text": "Дүрэм",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 3
+    },
+    {
+      "text": "Ажилтан долоо хоногт 2 өдөр зайнаас ажиллаж болно.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 4
+    },
+    {
+      "text": "Тоног төхөөрөмж суурилуулах үед зайнаас ажиллах нөхцөл үйлчлэхгүй.",
+      "heading": "Дүрэм",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 5
+    },
+    {
+      "text": "Policy code | REMOTE-01",
+      "heading": "Дүрэм",
+      "kind": "table",
+      "method": "native",
+      "block": 6
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.",
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

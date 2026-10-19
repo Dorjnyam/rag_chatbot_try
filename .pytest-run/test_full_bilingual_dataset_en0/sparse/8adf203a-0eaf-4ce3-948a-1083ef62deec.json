@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "version_id": "8adf203a-0eaf-4ce3-948a-1083ef62deec",
+  "content_hash": "ac0bfd3597ce561e7935fedde45f3f24a16c995e6c01ac50c2acc99d4713523d",
+  "documents": [
+    {
+      "id": "8e71f256-a0f6-5342-ba2b-810246f6b1c8",
+      "text": "Training\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 57,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "1a4ee459d743014dd21e5b1c03a630213a3eb9daab5017c198a1bd4e749867fc",
+        "document_id": "b40af36d-8ac7-4133-bc72-5b10d3c6f95f",
+        "version_id": "8adf203a-0eaf-4ce3-948a-1083ef62deec",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "training-en",
+      "filename": "training-en.docx",
+      "terms": [
+        "training-en",
+        "training-en.docx",
+        "training",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "002ef9a6-2691-5da1-8a58-b94fef6400a4",
+      "text": "Rules\n\nThe annual training allowance is 300000 MNT.\n\nTraining expenses require approval before enrollment.\n\nPolicy code | TRAINING-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 133,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "3f92522a8de1091094eb80580844a223e6249b5781d9c3adf44974f04f84cbf9",
+        "document_id": "b40af36d-8ac7-4133-bc72-5b10d3c6f95f",
+        "version_id": "8adf203a-0eaf-4ce3-948a-1083ef62deec",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "training-en",
+      "filename": "training-en.docx",
+      "terms": [
+        "training-en",
+        "training-en.docx",
+        "rules",
+        "rules",
+        "the",
+        "annual",
+        "training",
+        "allowance",
+        "is",
+        "300000",
+        "mnt",
+        "training",
+        "expenses",
+        "require",
+        "approval",
+        "before",
+        "enrollment",
+        "policy",
+        "code",
+        "training-01"
+      ]
+    }
+  ]
+}

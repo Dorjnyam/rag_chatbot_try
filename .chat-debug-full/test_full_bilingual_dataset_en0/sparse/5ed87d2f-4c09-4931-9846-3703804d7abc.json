@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "version_id": "5ed87d2f-4c09-4931-9846-3703804d7abc",
+  "content_hash": "9d983b77cf9356ba48cec1496d6a3c208ff6cfaf5d6a743190cb0b10e0676251",
+  "documents": [
+    {
+      "id": "f3cc8d4f-3833-50cb-8aa6-456d8c90352c",
+      "text": "Зардал\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 58,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "a3ddba60864be18a67afd2060a03401bb675f9cdb3769804164f7280918d4083",
+        "document_id": "f93ec9f6-e574-4c96-af34-fb8036a44b4f",
+        "version_id": "5ed87d2f-4c09-4931-9846-3703804d7abc",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "expenses-mn",
+      "filename": "expenses-mn.docx",
+      "terms": [
+        "expenses-mn",
+        "expenses-mn.docx",
+        "зардал",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "274b29ef-a482-52f9-ad3a-c91b9ade2750",
+      "text": "Дүрэм\n\nЗардал нэхэмжлэхэд задаргаатай баримт шаардлагатай.\n\nЗардлын нөхөн төлбөрийг баасан гараг бүр боловсруулна.\n\nPolicy code | EXPENSES-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 141,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "bb4cc05748dbf02f226fcb28b668c5c36c5ccee118bc939b8faba975686bc0b8",
+        "document_id": "f93ec9f6-e574-4c96-af34-fb8036a44b4f",
+        "version_id": "5ed87d2f-4c09-4931-9846-3703804d7abc",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "expenses-mn",
+      "filename": "expenses-mn.docx",
+      "terms": [
+        "expenses-mn",
+        "expenses-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "зардал",
+        "нэхэмжлэхэд",
+        "задаргаатай",
+        "баримт",
+        "шаардлагатай",
+        "зардлын",
+        "нөхөн",
+        "төлбөрийг",
+        "баасан",
+        "гараг",
+        "бүр",
+        "боловсруулна",
+        "policy",
+        "code",
+        "expenses-01"
+      ]
+    }
+  ]
+}

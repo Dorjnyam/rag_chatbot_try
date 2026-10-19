@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "version_id": "52724929-2212-42bf-af89-314ed5cd65b0",
+  "content_hash": "548ce3157a7f378b0b2d7046a3a9257c21279d7999448c5a36db363dd39180fe",
+  "documents": [
+    {
+      "id": "5dc59371-e7ff-55c7-a0b0-6d5972ae3fbd",
+      "text": "Equipment\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 58,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "275a57f897b7612b92add29348f299192e1232f33dcb649431c5b70d492c663c",
+        "document_id": "09ebac0d-34a6-4165-8666-cf1d5bb7e425",
+        "version_id": "52724929-2212-42bf-af89-314ed5cd65b0",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "equipment-en",
+      "filename": "equipment-en.docx",
+      "terms": [
+        "equipment-en",
+        "equipment-en.docx",
+        "equipment",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "0fd8b27f-6c58-52e2-873f-65d64d157ee2",
+      "text": "Rules\n\nReport a lost laptop within 2 hours.\n\nThe equipment register is managed by the IT coordinator.\n\nPolicy code | EQUIPMENT-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 129,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "6aa93694e0252d2ac85d198f6699e467ed036010433536e3dffee9ff8e12336c",
+        "document_id": "09ebac0d-34a6-4165-8666-cf1d5bb7e425",
+        "version_id": "52724929-2212-42bf-af89-314ed5cd65b0",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "equipment-en",
+      "filename": "equipment-en.docx",
+      "terms": [
+        "equipment-en",
+        "equipment-en.docx",
+        "rules",
+        "rules",
+        "report",
+        "a",
+        "lost",
+        "laptop",
+        "within",
+        "2",
+        "hours",
+        "the",
+        "equipment",
+        "register",
+        "is",
+        "managed",
+        "by",
+        "the",
+        "it",
+        "coordinator",
+        "policy",
+        "code",
+        "equipment-01"
+      ]
+    }
+  ]
+}

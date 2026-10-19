@@ -1,11 +1,43 @@
+from urllib.parse import urlsplit, urlunsplit
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
-from sqlalchemy import select
+from sqlalchemy import case, func, or_, select
+from sqlalchemy.orm import aliased
 from ..extensions import db
 from ..models import Document, DocumentVersion
 from ..services import ingestion
 from ..services.storage import path, read_json
 
 bp = Blueprint("documents", __name__)
+
+
+STATUS_ORDER = ("review", "failed", "indexing", "parsing", "pending", "ready", "deleting", "deleted", "no_version")
+STATUS_LABELS = {
+    "review": "Шалгах шаардлагатай", "failed": "Алдаатай", "indexing": "Индексжүүлж байна",
+    "parsing": "Боловсруулж байна", "pending": "Хүлээгдэж байна", "ready": "Бэлэн",
+    "deleting": "Устгаж байна", "deleted": "Устгасан", "no_version": "Хувилбаргүй",
+}
+
+
+def safe_return_to(value, fallback):
+    """Accept only a local GET route; prevent open redirects and malformed paths."""
+    if not value or not isinstance(value, str) or any(ord(ch) < 32 for ch in value) or "\\" in value:
+        return fallback
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/") or parsed.path.startswith("//"):
+        return fallback
+    try:
+        endpoint, _ = request.url_rule.map.bind("localhost").match(parsed.path, method="GET")
+    except Exception:
+        return fallback
+    if endpoint not in {"documents.documents", "chat.chat", "chat.query", "chat.evaluations", "chat.evaluation"}:
+        return fallback
+    return urlunsplit(("", "", parsed.path, parsed.query, parsed.fragment))
+
+
+def _like(value):
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
 
 @bp.get("/")
@@ -15,9 +47,121 @@ def home():
 
 @bp.get("/documents")
 def documents():
-    docs = db.session.scalars(select(Document).order_by(Document.created_at.desc())).all()
-    versions = db.session.scalars(select(DocumentVersion).order_by(DocumentVersion.version_number.desc())).all()
-    return render_template("documents.html", documents=docs, versions=versions)
+    q = request.args.get("q", "").strip()[:120]
+    status = request.args.get("status", "").strip()
+    language = request.args.get("language", "").strip()
+    file_type = request.args.get("type", "").strip().lower()
+    sort = request.args.get("sort", "newest")
+    group = request.args.get("group", "status")
+    try:
+        page = max(1, int(request.args.get("page", "1")))
+        per_page = int(request.args.get("per_page", "25"))
+    except ValueError:
+        page, per_page = 1, 25
+    if per_page not in (25, 50, 100):
+        per_page = 25
+    if status not in (*STATUS_ORDER, ""):
+        status = ""
+    if language not in ("mn", "en", "mixed", ""):
+        language = ""
+    if file_type not in ("pdf", "docx", "doc", ""):
+        file_type = ""
+    if sort not in ("newest", "oldest", "title_asc", "title_desc"):
+        sort = "newest"
+    if group not in ("status", "language", "type", "none"):
+        group = "status"
+
+    latest_id = (select(DocumentVersion.id).where(DocumentVersion.document_id == Document.id)
+                 .order_by(DocumentVersion.version_number.desc(), DocumentVersion.created_at.desc()).limit(1)
+                 .correlate(Document).scalar_subquery())
+    latest = aliased(DocumentVersion)
+    effective_status = case((Document.state == "deleted", "deleted"), (Document.state == "deleting", "deleting"),
+                            (latest.id.is_(None), "no_version"), else_=latest.state)
+    effective_type = func.lower(latest.media_type)
+    base = select(Document, latest).outerjoin(latest, latest.id == latest_id)
+    conditions = []
+    if status == "deleted":
+        conditions.append(or_(Document.state == "deleted", latest.state == "deleted"))
+    else:
+        conditions.append(Document.state != "deleted")
+        conditions.append(or_(latest.state != "deleted", latest.id.is_(None)))
+    if q:
+        like = _like(q)
+        conditions.append(or_(Document.title.ilike(like, escape="\\"), select(DocumentVersion.id).where(
+            DocumentVersion.document_id == Document.id, DocumentVersion.original_filename.ilike(like, escape="\\")).exists()))
+    if language:
+        conditions.append(Document.language == language)
+    if file_type:
+        conditions.append(effective_type.like(f"%.{file_type}") | (effective_type == file_type))
+    if status:
+        conditions.append(effective_status == status)
+    filtered = base.where(*conditions)
+
+    # Common status chips respect search/language/type, while remaining usable when one status is selected.
+    # Rebuild without the status predicate (SQLAlchemy expressions do not have identity semantics).
+    count_conditions = [Document.state != "deleted", or_(latest.state != "deleted", latest.id.is_(None))] if status != "deleted" else [or_(Document.state == "deleted", latest.state == "deleted")]
+    if q:
+        like = _like(q)
+        count_conditions.append(or_(Document.title.ilike(like, escape="\\"), select(DocumentVersion.id).where(
+            DocumentVersion.document_id == Document.id, DocumentVersion.original_filename.ilike(like, escape="\\")).exists()))
+    if language:
+        count_conditions.append(Document.language == language)
+    if file_type:
+        count_conditions.append(effective_type.like(f"%.{file_type}") | (effective_type == file_type))
+    status_counts = dict(db.session.execute(select(effective_status, func.count()).select_from(Document)
+        .outerjoin(latest, latest.id == latest_id).where(*count_conditions).group_by(effective_status)).all())
+
+    group_expr = {"status": effective_status, "language": Document.language, "type": effective_type}.get(group)
+    sort_expr = {
+        "newest": latest.created_at.desc().nullslast(), "oldest": latest.created_at.asc().nullsfirst(),
+        "title_asc": Document.title.asc(), "title_desc": Document.title.desc(),
+    }[sort]
+    ordering = []
+    if group_expr is not None:
+        if group == "status":
+            ordering.append(case(*[(effective_status == value, index) for index, value in enumerate(STATUS_ORDER)], else_=99))
+        else:
+            ordering.append(group_expr.asc().nullslast())
+    ordering.extend((sort_expr, Document.id.asc()))
+    total = db.session.scalar(select(func.count()).select_from(filtered.subquery())) or 0
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(page, pages)
+    group_counts = {}
+    if group_expr is not None:
+        group_counts = dict(db.session.execute(select(group_expr, func.count()).select_from(Document)
+            .outerjoin(latest, latest.id == latest_id).where(*conditions).group_by(group_expr)).all())
+    rows = db.session.execute(filtered.order_by(*ordering).offset((page - 1) * per_page).limit(per_page)).all()
+    page_ids = [doc.id for doc, _ in rows]
+    histories = {}
+    if page_ids:
+        for version in db.session.scalars(select(DocumentVersion).where(DocumentVersion.document_id.in_(page_ids))
+                .order_by(DocumentVersion.document_id, DocumentVersion.version_number.desc())):
+            histories.setdefault(version.document_id, []).append(version)
+    items = []
+    for doc, newest in rows:
+        if group == "status":
+            key = "deleted" if doc.state == "deleted" else "deleting" if doc.state == "deleting" else (newest.state if newest else "no_version")
+            label = STATUS_LABELS.get(key, key)
+        elif group == "language":
+            key, label = doc.language or "unknown", {"mn": "Монгол", "en": "Англи", "mixed": "Холимог"}.get(doc.language, "Тодорхойгүй")
+        elif group == "type":
+            key, label = (newest.media_type if newest else "unknown"), (newest.media_type.upper() if newest else "Төрөлгүй")
+        else:
+            key, label = "all", "Баримтууд"
+        items.append({"document": doc, "latest": newest, "versions": histories.get(doc.id, []), "group_key": key, "group_label": label,
+                      "active_version": doc.active_version_id})
+    groups = []
+    for item in items:
+        if not groups or groups[-1]["key"] != item["group_key"]:
+            groups.append({"key": item["group_key"], "label": item["group_label"],
+                           "count": group_counts.get(item["group_key"], 0), "items": []})
+        groups[-1]["items"].append(item)
+    query_params = request.args.to_dict(flat=True)
+    return_to = request.full_path[:-1] if request.full_path.endswith("?") else request.full_path
+    return render_template("documents.html", groups=groups, total=total, page=page, per_page=per_page,
+        pages=pages, q=q, status=status, language=language, file_type=file_type,
+        sort=sort, group=group, query_params=query_params, status_counts=status_counts,
+        status_labels=STATUS_LABELS, return_to=return_to)
 
 
 @bp.post("/documents")
@@ -27,8 +171,9 @@ def upload(document_id=None):
     if not file:
         raise ValueError("Choose a document file.")
     version, duplicate = ingestion.upload(file, request.form.get("title", ""), request.form.get("language", "mixed"), document_id)
-    flash("Identical source/build already exists." if duplicate else "Upload saved. Process it to inspect extraction and build the index.")
-    return redirect(url_for("documents.version", version_id=version.id))
+    flash("Ижил эх баримт, тохиргоотой хувилбар өмнө нь бүртгэгдсэн байна." if duplicate else "Файл хадгалагдлаа. Танилтыг шалгаж индекс үүсгэнэ үү.")
+    target = safe_return_to(request.form.get("return_to"), url_for("documents.documents"))
+    return redirect(url_for("documents.version", version_id=version.id, return_to=target))
 
 
 @bp.get("/versions/<version_id>")
@@ -37,7 +182,8 @@ def version(version_id):
     document = db.get_or_404(Document, version.document_id)
     artifact = read_json(version.extraction_path) if version.extraction_path and path(version.extraction_path).exists() else None
     manifest = read_json(version.manifest_path) if version.manifest_path and path(version.manifest_path).exists() else []
-    return render_template("version.html", version=version, document=document, artifact=artifact, manifest=manifest)
+    return_to = safe_return_to(request.args.get("return_to"), url_for("documents.documents"))
+    return render_template("version.html", version=version, document=document, artifact=artifact, manifest=manifest, return_to=return_to)
 
 
 @bp.get("/versions/<version_id>/source")
@@ -52,8 +198,9 @@ def source(version_id):
 @bp.post("/versions/<version_id>/process")
 def process(version_id):
     version = ingestion.process(version_id)
-    flash("Extraction needs review." if version.state == "review" else "Index verified and version activated.")
-    return redirect(url_for("documents.version", version_id=version.id))
+    flash("Танилтыг шалгах шаардлагатай." if version.state == "review" else "Индексийг шалгаж, хувилбарыг идэвхжүүллээ.")
+    target = safe_return_to(request.form.get("return_to"), url_for("documents.documents"))
+    return redirect(url_for("documents.version", version_id=version.id, return_to=target))
 
 
 @bp.post("/versions/<version_id>/approve")
@@ -62,8 +209,9 @@ def approve(version_id):
         raise ValueError("Compare extraction against the original and confirm review first.")
     choices = {key[5:]: value for key, value in request.form.items() if key.startswith("page_")}
     ingestion.approve(version_id, choices)
-    flash("Review recorded. Process this version to generate embeddings.")
-    return redirect(url_for("documents.version", version_id=version_id))
+    flash("Шалгалт хадгалагдлаа. Embedding үүсгэхийн тулд энэ хувилбарыг боловсруулна уу.")
+    target = safe_return_to(request.form.get("return_to"), url_for("documents.documents"))
+    return redirect(url_for("documents.version", version_id=version_id, return_to=target))
 
 
 @bp.post("/documents/<document_id>/reindex")
@@ -73,11 +221,12 @@ def reindex(document_id):
     except ValueError as exc:
         raise ValueError("OCR overrides must be comma-separated page numbers.") from exc
     version = ingestion.reindex(document_id, pages)
-    return redirect(url_for("documents.version", version_id=version.id))
+    target = safe_return_to(request.form.get("return_to"), url_for("documents.documents"))
+    return redirect(url_for("documents.version", version_id=version.id, return_to=target))
 
 
 @bp.post("/documents/<document_id>/delete")
 def delete(document_id):
     ingestion.delete_document(document_id)
-    flash("Document vectors and unreferenced files deleted. Historical records retain a tombstone.")
-    return redirect(url_for("documents.documents"))
+    flash("Баримтын индекс болон ашиглагдаагүй файлыг устгалаа. Түүхэн бүртгэл хадгалагдлаа.")
+    return redirect(safe_return_to(request.form.get("return_to"), url_for("documents.documents")))

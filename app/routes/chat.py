@@ -1,4 +1,5 @@
-from flask import Blueprint, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
+from urllib.parse import urlsplit, urlunsplit
 from sqlalchemy import select
 from ..extensions import db
 from ..models import Document, DocumentVersion, QueryLog, EvaluationRun, EvaluationResult, EvaluationQuestion, uid, now
@@ -8,16 +9,42 @@ from ..services.vectorstore import store
 bp = Blueprint("chat", __name__)
 
 
+def safe_return_to(value, fallback):
+    if not value or not isinstance(value, str) or any(ord(ch) < 32 for ch in value) or "\\" in value:
+        return fallback
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc or not parsed.path.startswith("/") or parsed.path.startswith("//"):
+        return fallback
+    try:
+        endpoint, _ = request.url_rule.map.bind("localhost").match(parsed.path, method="GET")
+    except Exception:
+        return fallback
+    if endpoint not in {"documents.documents", "chat.chat", "chat.query", "chat.evaluations", "chat.evaluation"}:
+        return fallback
+    return urlunsplit(("", "", parsed.path, parsed.query, parsed.fragment))
+
+
 def conversation():
     session.setdefault("conversation", uid())
     return session["conversation"]
+
+
+def public_chat_error(log):
+    if log.error and "different embedding space" in log.error:
+        from ..services.retrieval import incompatible_active_count
+        count = incompatible_active_count()
+        target = current_app.config["AI_PROVIDER"]
+        return (f"{count} идэвхтэй индекс одоогийн {target.upper()} embedding-тэй нийцэхгүй байна. "
+            f"Шилжүүлэх жагсаалтыг шалгахын тулд: flask migrate-indexes prepare --target-provider {target} --dry-run")
+    return "Хариулт боловсруулахад техникийн алдаа гарлаа. Тохиргоо болон дэлгэрэнгүйг шалгана уу."
 
 
 @bp.get("/chat")
 def chat():
     history = db.session.scalars(select(QueryLog).where(QueryLog.conversation_id == conversation()).order_by(QueryLog.created_at)).all()
     documents = db.session.scalars(select(Document).where(Document.state == "active", Document.active_version_id.is_not(None))).all()
-    return render_template("chat.html", history=history, documents=documents)
+    from ..services.retrieval import incompatible_active_count
+    return render_template("chat.html", history=history, documents=documents, incompatible_count=incompatible_active_count())
 
 
 @bp.post("/chat/new")
@@ -44,8 +71,8 @@ def message():
         raise ValueError("Invalid document language filter.")
     retrieval_only = data.get("retrieval_only") in (True, "on", "true")
     log, hits = ask(question, conversation(), k, [document_id] if document_id else None, language, retrieval_only)
-    return jsonify(id=log.id, status=log.status, answer=log.answer, error=log.error, citations=log.citations,
-        timings=log.timings, trace=hits, details_url=url_for("chat.query", query_id=log.id)), (502 if log.status == "error" else 200)
+    return jsonify(id=log.id, status=log.status, answer=log.answer, error=public_chat_error(log) if log.status == "error" else None, citations=log.citations,
+        timings=log.timings, trace=hits, details_url=url_for("chat.query", query_id=log.id, return_to=url_for("chat.chat"))), (502 if log.status == "error" else 200)
 
 
 @bp.get("/queries/<query_id>")
@@ -58,7 +85,7 @@ def query(query_id):
         hit = dict(hit)
         version = db.session.get(DocumentVersion, hit["metadata"]["version_id"])
         document = db.session.get(Document, version.document_id) if version else None
-        hit["text"] = "Source unavailable (deleted or index missing)."
+        hit["text"] = "Эх сурвалж устсан эсвэл индекс олдсонгүй."
         if document and document.state == "active":
             from chromadb.errors import NotFoundError
             try:
@@ -68,13 +95,14 @@ def query(query_id):
             except NotFoundError:
                 pass
         traces.append(hit)
-    return render_template("query.html", log=log, traces=traces)
+    return_to = safe_return_to(request.args.get("return_to"), url_for("chat.chat"))
+    return render_template("query.html", log=log, traces=traces, return_to=return_to)
 
 
 @bp.get("/evaluation")
 def evaluations():
     runs = db.session.scalars(select(EvaluationRun).order_by(EvaluationRun.started_at.desc())).all()
-    return render_template("evaluation.html", runs=runs, results=None)
+    return render_template("evaluation.html", runs=runs, results=None, is_detail=False)
 
 
 @bp.get("/evaluation/<run_id>")
@@ -84,7 +112,8 @@ def evaluation(run_id):
         .join(EvaluationQuestion, (EvaluationResult.question_id == EvaluationQuestion.id) & (EvaluationResult.question_revision == EvaluationQuestion.revision))
         .join(QueryLog, EvaluationResult.query_log_id == QueryLog.id).where(EvaluationResult.run_id == run.id)).all()
     from ..evaluation import human_summary
-    return render_template("evaluation.html", runs=[run], results=results, human=human_summary([r for r, q, log in results]))
+    return_to = safe_return_to(request.args.get("return_to"), url_for("chat.evaluations"))
+    return render_template("evaluation.html", runs=[run], results=results, human=human_summary([r for r, q, log in results]), return_to=return_to, is_detail=True)
 
 
 @bp.post("/evaluation/results/<result_id>/review")
@@ -100,4 +129,5 @@ def review(result_id):
         raise ValueError("Enter a reviewer name or local identifier.")
     result.review = dict(scores, reviewer=request.form["reviewer"][:120], diagnosis=request.form.get("diagnosis", "")[:4000], method="human", reviewed_at=now().isoformat())
     db.session.commit()
-    return redirect(url_for("chat.evaluation", run_id=result.run_id))
+    target = safe_return_to(request.form.get("return_to"), url_for("chat.evaluation", run_id=result.run_id))
+    return redirect(target)

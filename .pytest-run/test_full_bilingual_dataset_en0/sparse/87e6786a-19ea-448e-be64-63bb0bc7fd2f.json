@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "version_id": "87e6786a-19ea-448e-be64-63bb0bc7fd2f",
+  "content_hash": "79d277e6c90e4d1df92d77c37f05bda8f76031b5d207929812ca453984ce3c36",
+  "documents": [
+    {
+      "id": "b42365ab-9f92-5d28-bf91-0c1dbd2eaa99",
+      "text": "Тоног төхөөрөмж\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 67,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "fcb0dc7bc0175334e75323e5ad4fbbe65edfb3a0ee19b6532cad04dd3fd30403",
+        "document_id": "ad7dfa34-360d-4a3c-bf3f-bb1343f1787d",
+        "version_id": "87e6786a-19ea-448e-be64-63bb0bc7fd2f",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "equipment-mn",
+      "filename": "equipment-mn.docx",
+      "terms": [
+        "equipment-mn",
+        "equipment-mn.docx",
+        "тоног",
+        "төхөөрөмж",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "d54b0add-4140-5d7c-8981-a2835386bdfd",
+      "text": "Дүрэм\n\nЗөөврийн компьютер алга болбол 2 цагийн дотор мэдэгдэнэ.\n\nТоног төхөөрөмжийн бүртгэлийг мэдээллийн технологийн зохицуулагч хөтөлнө.\n\nPolicy code | EQUIPMENT-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 166,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "36c8e876978e94ef0f266018f8ccf86c7f93ef000e018bb9536b73513fa1e080",
+        "document_id": "ad7dfa34-360d-4a3c-bf3f-bb1343f1787d",
+        "version_id": "87e6786a-19ea-448e-be64-63bb0bc7fd2f",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "equipment-mn",
+      "filename": "equipment-mn.docx",
+      "terms": [
+        "equipment-mn",
+        "equipment-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "зөөврийн",
+        "компьютер",
+        "алга",
+        "болбол",
+        "2",
+        "цагийн",
+        "дотор",
+        "мэдэгдэнэ",
+        "тоног",
+        "төхөөрөмжийн",
+        "бүртгэлийг",
+        "мэдээллийн",
+        "технологийн",
+        "зохицуулагч",
+        "хөтөлнө",
+        "policy",
+        "code",
+        "equipment-01"
+      ]
+    }
+  ]
+}

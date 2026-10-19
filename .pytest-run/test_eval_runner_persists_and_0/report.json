@@ -1,0 +1,464 @@
+{
+  "id": "75068ed5-59ec-4edd-acf1-4bb1b77ef5dc",
+  "snapshot": {
+    "corpus": [
+      {
+        "id": "d822fd7c-4ae6-4e05-bd01-f1a605c4e561",
+        "document_id": "2fe0d74b-4023-4bc1-a6d9-929362df3e44",
+        "sha256": "8027e887496e35e651afab7961e928610fae96a3de02f2534bc7b3504eb168e9",
+        "config": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996",
+        "index_config": {
+          "parser": "ordered-blocks-v1",
+          "strategy": "characters-v1",
+          "chunk_size": 1800,
+          "chunk_overlap": 250,
+          "provider": "gemini",
+          "embedding_model": "gemini-embedding-001",
+          "dimensions": 128,
+          "normalization": "l2-v1",
+          "chunk_fitting": "gemini-bytefit-v1",
+          "ocr_languages": "mon+eng",
+          "ocr_min_characters": 40,
+          "forced_pages": [],
+          "embedding_input_guard": "utf8-1900-v1",
+          "native_tools": {
+            "TESSERACT_CMD": "unavailable",
+            "LIBREOFFICE_CMD": "a2823391857db1dd8ebbd8234267f9ec58ec7e5b5fc434665c0ecec4671cb988",
+            "mon": "unavailable",
+            "eng": "unavailable"
+          }
+        }
+      }
+    ],
+    "corpus_hash": "0bf1138a5094e1e8f91ae5fb47ed605f8e54db8fe91f837d213a40f4abe01e2e",
+    "dataset_hash": "85974dbc88648e689df3cd062547a29ca46d465d3cbf0ca9a7bd05ba99f22824",
+    "split": "dev",
+    "reviewed": false,
+    "packages": {
+      "Flask": "3.1.3",
+      "SQLAlchemy": "2.1.5",
+      "chromadb": "1.5.9",
+      "google-genai": "2.31.0",
+      "openai": "2.30.0",
+      "tiktoken": "0.12.0",
+      "pypdf": "6.21.1",
+      "python-docx": "1.2.0",
+      "pytesseract": "0.3.13"
+    }
+  },
+  "config": {
+    "provider": "gemini",
+    "embedding_model": "gemini-embedding-001",
+    "dimensions": 128,
+    "generation_model": "gemini-3.5-flash-lite",
+    "prompt_revision": "grounded-v3-mn-cyrl-hybrid",
+    "top_k": 5,
+    "context_tokens": 8000,
+    "history_tokens": 2000,
+    "input_tokens": 12000,
+    "output_tokens": 1000,
+    "temperature": 0,
+    "retrieval_mode": "hybrid",
+    "dense_top_k": 15,
+    "sparse_top_k": 15,
+    "rrf_k": 60,
+    "reranking_enabled": false,
+    "query_rewriting_enabled": false,
+    "generate": false
+  },
+  "metrics": {
+    "en->en": {
+      "count": 1,
+      "errors": 0,
+      "answerable": {
+        "mean": 1,
+        "count": 1
+      },
+      "document_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "document_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "language_detection_accuracy": {
+        "mean": 0.0,
+        "count": 1
+      },
+      "passage_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "passage_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "returned_count": {
+        "mean": 1,
+        "count": 1
+      },
+      "query_embedding_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "vector_search_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "sparse_search_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      },
+      "query_rewriting_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "reranking_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "context_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "generation_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "total_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      }
+    },
+    "overall": {
+      "count": 1,
+      "errors": 0,
+      "answerable": {
+        "mean": 1,
+        "count": 1
+      },
+      "document_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "document_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "language_detection_accuracy": {
+        "mean": 0.0,
+        "count": 1
+      },
+      "passage_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "passage_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "returned_count": {
+        "mean": 1,
+        "count": 1
+      },
+      "query_embedding_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "vector_search_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "sparse_search_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      },
+      "query_rewriting_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "reranking_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "context_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "generation_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "total_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      }
+    },
+    "input:en": {
+      "count": 1,
+      "errors": 0,
+      "answerable": {
+        "mean": 1,
+        "count": 1
+      },
+      "document_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "document_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "document_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "language_detection_accuracy": {
+        "mean": 0.0,
+        "count": 1
+      },
+      "passage_hit_rate": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_ndcg": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_precision": {
+        "mean": 0.2,
+        "count": 1
+      },
+      "passage_recall": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "passage_reciprocal_rank": {
+        "mean": 1.0,
+        "count": 1
+      },
+      "returned_count": {
+        "mean": 1,
+        "count": 1
+      },
+      "query_embedding_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "vector_search_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "sparse_search_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      },
+      "query_rewriting_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "reranking_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "context_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "generation_ms": {
+        "p50": 0.0,
+        "p95": 0.0
+      },
+      "total_ms": {
+        "p50": 15.99999999962165,
+        "p95": 15.99999999962165
+      }
+    }
+  },
+  "human_summary": {
+    "total": 1,
+    "correctness": {
+      "reviewed": 1,
+      "fully_correct": 0,
+      "fully_correct_fraction": 0.0,
+      "mean": 1
+    },
+    "faithfulness": {
+      "reviewed": 0,
+      "fully_correct": 0,
+      "fully_correct_fraction": null,
+      "mean": null
+    },
+    "citation_accuracy": {
+      "reviewed": 0,
+      "fully_correct": 0,
+      "fully_correct_fraction": null,
+      "mean": null
+    },
+    "citation_coverage": {
+      "reviewed": 0,
+      "fully_correct": 0,
+      "fully_correct_fraction": null,
+      "mean": null
+    }
+  },
+  "results": [
+    {
+      "question": {
+        "id": "en-en-1",
+        "language": "en",
+        "evidence_language": "en",
+        "direction": "en->en",
+        "split": "dev",
+        "answerable": true,
+        "question": "leave",
+        "expected_answer": "five days",
+        "review_status": "draft",
+        "evidence": [
+          {
+            "sha256": "8027e887496e35e651afab7961e928610fae96a3de02f2534bc7b3504eb168e9",
+            "unit_id": "leave-1",
+            "block": 2,
+            "excerpt": "five working days"
+          }
+        ]
+      },
+      "metrics": {
+        "passage_recall": 1.0,
+        "passage_precision": 0.2,
+        "passage_reciprocal_rank": 1.0,
+        "passage_hit_rate": 1.0,
+        "passage_ndcg": 1.0,
+        "document_recall": 1.0,
+        "document_precision": 0.2,
+        "document_reciprocal_rank": 1.0,
+        "document_hit_rate": 1.0,
+        "document_ndcg": 1.0,
+        "returned_count": 1,
+        "answerable": 1,
+        "language_detection_accuracy": 0.0
+      },
+      "human_review": {
+        "correctness": 1,
+        "faithfulness": null,
+        "citation_accuracy": null,
+        "citation_coverage": null,
+        "reviewer": "test-fixture-reviewer",
+        "diagnosis": "Synthetic route test; not actual human acceptance",
+        "method": "human",
+        "reviewed_at": "2026-10-19T09:28:33.127325+00:00"
+      },
+      "query": {
+        "id": "d5718a2f-a6f2-4e77-9808-b48205f11983",
+        "status": "retrieved",
+        "answer": "",
+        "citations": [],
+        "trace": [
+          {
+            "id": "f0dce998-b73f-5164-89f7-dff3fe91c4e9",
+            "metadata": {
+              "block_start": 1,
+              "block_end": 2,
+              "heading": "Leave",
+              "extraction_method": "native",
+              "char_start": 0,
+              "char_end": 50,
+              "partial_table": false,
+              "chunk_ordinal": 0,
+              "content_hash": "ddba6112b8271b7ef01f7dc103d0c1a00328e9dc9abdb516cdfafe5a25578fd2",
+              "document_id": "2fe0d74b-4023-4bc1-a6d9-929362df3e44",
+              "version_id": "d822fd7c-4ae6-4e05-bd01-f1a605c4e561",
+              "language": "en",
+              "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+            },
+            "distance": 0.3675444722175598,
+            "rrf_score": 0.03278688524590164,
+            "branch_ranks": {
+              "dense": 1,
+              "sparse": 1
+            },
+            "similarity": 0.6324555277824402,
+            "title": "Leave policy",
+            "filename": "policy.docx",
+            "sparse_score": 0.5230583135486925,
+            "version_number": 1,
+            "selected": false,
+            "degraded": false,
+            "rank": 1
+          }
+        ],
+        "timings": {
+          "query_embedding_ms": 0.0,
+          "vector_search_ms": 0.0,
+          "sparse_search_ms": 15.99999999962165,
+          "reranking_ms": 0.0,
+          "sparse_degraded": false,
+          "generation_ms": 0,
+          "total_ms": 15.99999999962165
+        },
+        "usage": {
+          "tokens": {},
+          "api_attempts": 0
+        },
+        "error": null
+      }
+    }
+  ]
+}

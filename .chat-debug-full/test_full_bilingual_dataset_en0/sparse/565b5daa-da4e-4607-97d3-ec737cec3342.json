@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "version_id": "565b5daa-da4e-4607-97d3-ec737cec3342",
+  "content_hash": "3e4ab15a40ae4ae83817a28087ce6f9f2d99c687af84bcb9d53c7d86c03ef9e6",
+  "documents": [
+    {
+      "id": "28a2c868-3218-5215-b2b8-58f96dcbf4cd",
+      "text": "Leave\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 54,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "53f397cbc664011e241146973161ea16984ab6d2edfd1a6ffaa0fd1acbb821cb",
+        "document_id": "cc2bdb6f-8565-4093-8faf-0f332907c3e7",
+        "version_id": "565b5daa-da4e-4607-97d3-ec737cec3342",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "leave-en",
+      "filename": "leave-en.docx",
+      "terms": [
+        "leave-en",
+        "leave-en.docx",
+        "leave",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "fad13ef0-eacf-5ced-9c0b-c57e71a5f7b2",
+      "text": "Rules\n\nRequest leave 5 working days before the start date.\n\nThe team lead approves leave requests.\n\nPolicy code | LEAVE-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 122,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "ba3effe651ca506844c85dc5731d73e8c13451ba2c303ce4c44abb0075bbff86",
+        "document_id": "cc2bdb6f-8565-4093-8faf-0f332907c3e7",
+        "version_id": "565b5daa-da4e-4607-97d3-ec737cec3342",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "leave-en",
+      "filename": "leave-en.docx",
+      "terms": [
+        "leave-en",
+        "leave-en.docx",
+        "rules",
+        "rules",
+        "request",
+        "leave",
+        "5",
+        "working",
+        "days",
+        "before",
+        "the",
+        "start",
+        "date",
+        "the",
+        "team",
+        "lead",
+        "approves",
+        "leave",
+        "requests",
+        "policy",
+        "code",
+        "leave-01"
+      ]
+    }
+  ]
+}

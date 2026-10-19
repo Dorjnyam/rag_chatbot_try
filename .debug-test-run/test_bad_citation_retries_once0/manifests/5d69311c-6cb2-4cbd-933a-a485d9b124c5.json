@@ -1,0 +1,20 @@
+[
+  {
+    "id": "9c38db48-3ed6-5ac0-a0ca-63b63c42bb18",
+    "metadata": {
+      "block_start": 1,
+      "block_end": 2,
+      "heading": "Leave",
+      "extraction_method": "native",
+      "char_start": 0,
+      "char_end": 50,
+      "partial_table": false,
+      "chunk_ordinal": 0,
+      "content_hash": "ddba6112b8271b7ef01f7dc103d0c1a00328e9dc9abdb516cdfafe5a25578fd2",
+      "document_id": "e0ba1a7e-f0aa-490f-8181-4563ae047a3b",
+      "version_id": "5d69311c-6cb2-4cbd-933a-a485d9b124c5",
+      "language": "en",
+      "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+    }
+  }
+]

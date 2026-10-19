@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "version_id": "bd778b8e-b708-4af5-88e3-08def6e12807",
+  "content_hash": "ca3c48c401b9ca4eceea71722242f5f56a5f898e670863f697f51443c74181bd",
+  "documents": [
+    {
+      "id": "94e2fc6f-771f-5412-b598-655d7553e804",
+      "text": "Томилолт\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 60,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "931a2a7f0883d5ba80894ab96da7c2838a68d2416f88b6fc3374ba6b4fc2f902",
+        "document_id": "c219cc96-9e2e-4027-b857-6fee98c1fdab",
+        "version_id": "bd778b8e-b708-4af5-88e3-08def6e12807",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "travel-mn",
+      "filename": "travel-mn.docx",
+      "terms": [
+        "travel-mn",
+        "travel-mn.docx",
+        "томилолт",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "bb5b9277-88ba-5a35-8eaf-ef67f03bdebe",
+      "text": "Дүрэм\n\nХоолны өдрийн тэтгэмж 45000 төгрөг байна.\n\nТомилолтоос ирснээс хойш 7 хуанлийн хоногт баримтаа өгнө.\n\nPolicy code | TRAVEL-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 132,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "fb3d7f2a6794b92adf818784b3994017bb2c839dacda0295f5f8be2002dc8a95",
+        "document_id": "c219cc96-9e2e-4027-b857-6fee98c1fdab",
+        "version_id": "bd778b8e-b708-4af5-88e3-08def6e12807",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "travel-mn",
+      "filename": "travel-mn.docx",
+      "terms": [
+        "travel-mn",
+        "travel-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "хоолны",
+        "өдрийн",
+        "тэтгэмж",
+        "45000",
+        "төгрөг",
+        "байна",
+        "томилолтоос",
+        "ирснээс",
+        "хойш",
+        "7",
+        "хуанлийн",
+        "хоногт",
+        "баримтаа",
+        "өгнө",
+        "policy",
+        "code",
+        "travel-01"
+      ]
+    }
+  ]
+}

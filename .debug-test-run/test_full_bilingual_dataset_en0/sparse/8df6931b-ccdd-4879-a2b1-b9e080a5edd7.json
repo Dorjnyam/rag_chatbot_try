@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "version_id": "8df6931b-ccdd-4879-a2b1-b9e080a5edd7",
+  "content_hash": "60183893493b261cce93a869d1313dabc4fa946d90aa6e04194a3e9fba151316",
+  "documents": [
+    {
+      "id": "1dec0ff2-857d-53b6-8494-70f3ccf07690",
+      "text": "Сургалт\n\nСУРГАЛТЫН ЗОХИОМОЛ БАРИМТ — БАЙГУУЛЛАГЫН ЖУРАМ БИШ",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 59,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "604294f9f54bd8c3c48977986466dc0d2a4479db620f25fd06307282578d03f7",
+        "document_id": "664c00a4-758d-45f4-ba25-49d4fb6d8653",
+        "version_id": "8df6931b-ccdd-4879-a2b1-b9e080a5edd7",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "training-mn",
+      "filename": "training-mn.docx",
+      "terms": [
+        "training-mn",
+        "training-mn.docx",
+        "сургалт",
+        "сургалтын",
+        "зохиомол",
+        "баримт",
+        "байгууллагын",
+        "журам",
+        "биш"
+      ]
+    },
+    {
+      "id": "3739ff06-431a-562d-8392-c9a3bf3707a9",
+      "text": "Дүрэм\n\nЖилийн сургалтын тэтгэмж 300000 төгрөг байна.\n\nСургалтад бүртгүүлэхээс өмнө зардлаа батлуулна.\n\nPolicy code | TRAINING-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Дүрэм",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 128,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "e667c2582a80ee19b49b2d08aa8690e4d458ce44797bdce827b370a4279a66d1",
+        "document_id": "664c00a4-758d-45f4-ba25-49d4fb6d8653",
+        "version_id": "8df6931b-ccdd-4879-a2b1-b9e080a5edd7",
+        "language": "mn",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "training-mn",
+      "filename": "training-mn.docx",
+      "terms": [
+        "training-mn",
+        "training-mn.docx",
+        "дүрэм",
+        "дүрэм",
+        "жилийн",
+        "сургалтын",
+        "тэтгэмж",
+        "300000",
+        "төгрөг",
+        "байна",
+        "сургалтад",
+        "бүртгүүлэхээс",
+        "өмнө",
+        "зардлаа",
+        "батлуулна",
+        "policy",
+        "code",
+        "training-01"
+      ]
+    }
+  ]
+}

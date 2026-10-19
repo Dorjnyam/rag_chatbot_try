@@ -1,0 +1,52 @@
+{
+  "blocks": [
+    {
+      "text": "Travel",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "SYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "heading": "",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    },
+    {
+      "text": "Rules",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 3
+    },
+    {
+      "text": "The daily meal allowance is 45000 MNT.",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 4
+    },
+    {
+      "text": "Submit travel receipts within 7 calendar days after return.",
+      "heading": "Rules",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 5
+    },
+    {
+      "text": "Policy code | TRAVEL-01",
+      "heading": "Rules",
+      "kind": "table",
+      "method": "native",
+      "block": 6
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.",
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

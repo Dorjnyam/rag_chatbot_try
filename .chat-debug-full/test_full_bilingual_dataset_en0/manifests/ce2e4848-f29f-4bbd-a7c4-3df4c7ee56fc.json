@@ -1,0 +1,38 @@
+[
+  {
+    "id": "297c011b-50d0-5323-9d34-a02f547381e5",
+    "metadata": {
+      "block_start": 1,
+      "block_end": 2,
+      "heading": "",
+      "extraction_method": "native",
+      "char_start": 0,
+      "char_end": 59,
+      "partial_table": false,
+      "chunk_ordinal": 0,
+      "content_hash": "604294f9f54bd8c3c48977986466dc0d2a4479db620f25fd06307282578d03f7",
+      "document_id": "9b54e076-2320-4088-94e1-2ab3cd2669bc",
+      "version_id": "ce2e4848-f29f-4bbd-a7c4-3df4c7ee56fc",
+      "language": "mn",
+      "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+    }
+  },
+  {
+    "id": "c732c93a-a7c7-5d1d-8d3f-5cb6fba9f302",
+    "metadata": {
+      "block_start": 3,
+      "block_end": 6,
+      "heading": "Дүрэм",
+      "extraction_method": "native",
+      "char_start": 0,
+      "char_end": 128,
+      "partial_table": false,
+      "chunk_ordinal": 1,
+      "content_hash": "e667c2582a80ee19b49b2d08aa8690e4d458ce44797bdce827b370a4279a66d1",
+      "document_id": "9b54e076-2320-4088-94e1-2ab3cd2669bc",
+      "version_id": "ce2e4848-f29f-4bbd-a7c4-3df4c7ee56fc",
+      "language": "mn",
+      "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+    }
+  }
+]

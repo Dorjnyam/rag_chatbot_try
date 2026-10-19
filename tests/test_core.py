@@ -41,6 +41,45 @@ def test_vector_normalization():
     assert normalize_vector([3,4], 2) == [.6,.8]
 
 
+def test_openai_embedding_response_is_ordered_and_normalized():
+    from types import SimpleNamespace
+    from app.services.openai_provider import OpenAIProvider
+
+    adapter = object.__new__(OpenAIProvider)
+    adapter.embedding_model, adapter.embedding_dimensions = "text-embedding-3-small", 2
+    adapter._encoding = lambda _model: None
+    adapter._call = lambda operation: SimpleNamespace(data=[
+        SimpleNamespace(index=1, embedding=[0, 3]),
+        SimpleNamespace(index=0, embedding=[4, 0]),
+    ])
+    assert adapter.embed(["first", "second"], "RETRIEVAL_QUERY") == [[1, 0], [0, 1]]
+
+
+def test_openai_embedding_rejects_over_limit_input():
+    from app.services.openai_provider import OpenAIProvider
+
+    adapter = object.__new__(OpenAIProvider)
+    adapter.embedding_model, adapter.embedding_dimensions = "text-embedding-3-small", 2
+    adapter._encoding = lambda _model: None
+    with pytest.raises(ValueError, match="7,900-token"):
+        adapter.embed(["x" * 8000], "RETRIEVAL_QUERY")
+
+
+def test_provider_configuration_keeps_legacy_gemini_and_uses_openai_defaults(monkeypatch, tmp_path):
+    from app.config import settings
+
+    monkeypatch.delenv("AI_PROVIDER", raising=False)
+    monkeypatch.setenv("EMBEDDING_MODEL", "legacy-gemini-model")
+    legacy = settings(tmp_path)
+    assert legacy["AI_PROVIDER"] == "gemini"
+    assert legacy["EMBEDDING_MODEL"] == "legacy-gemini-model"
+    monkeypatch.setenv("AI_PROVIDER", "openai")
+    selected = settings(tmp_path)
+    assert selected["EMBEDDING_MODEL"] == "text-embedding-3-small"
+    assert selected["GENERATION_MODEL"] == "gpt-6-luna"
+    assert selected["EMBEDDING_DIMENSIONS"] == 1536
+
+
 def test_embedding_byte_guard_splits_without_token_count_endpoint():
     from app.services.gemini import Gemini
     adapter = object.__new__(Gemini)
@@ -68,9 +107,39 @@ def test_citation_and_abstention_contract():
 
 def test_metrics_hand_calculated_and_overlap_deduplicated():
     result = ranking_metrics([set(), {"a"}, {"a"}], {"a", "b"}, 5)
-    assert result == dict(recall=.5, precision=.2, reciprocal_rank=.5)
+    assert result == dict(recall=.5, precision=.2, reciprocal_rank=.5, hit_rate=1.0,
+        ndcg=(1 / math.log2(3)) / (1 + 1 / math.log2(3)))
     assert ranking_metrics([], set(), 5)["recall"] is None
     assert ranking_metrics([], {"a"}, 5)["reciprocal_rank"] == 0
+
+
+def test_mongolian_query_detection_and_conservative_normalization():
+    from app.services.language import detect_language, normalize_romanized, query_candidates
+    assert detect_language("Ажилтны амралт хэдэн хоног вэ?")["language"] == "mn_cyrl"
+    assert detect_language("How many days of annual leave?")["language"] == "en"
+    assert detect_language("Ajiltnii eeljiin amralt heden honog ve?")["language"] == "mn_latn"
+    assert detect_language("Ajiltnii annual leave heden honog ve?")["language"] == "mixed"
+    assert detect_language("xyzzy")["language"] == "unknown"
+    normalized = normalize_romanized("Ajiltnii eeljiin amralt heden honog ve? Ref POL-04")
+    assert normalized["text"] == "Ажилтны ээлжийн амралт хэдэн хоног вэ? Ref POL-04"
+    assert query_candidates("Ajiltnii eeljiin amralt heden honog ve?")["original"].startswith("Ajiltnii")
+
+
+def test_bm25_unicode_metadata_and_rrf_deduplication(tmp_path):
+    from flask import Flask
+    from app.services.sparse import write_index, search
+    from app.services.sparse import rrf
+    app = Flask(__name__)
+    app.config["DATA_DIR"] = tmp_path
+    with app.app_context():
+        chunks = [dict(id="leave", text="Ажилтны ээлжийн амралт таван өдөр", metadata=dict(version_id="v1", document_id="d1", heading="Хүний нөөц")),
+            dict(id="code", text="POL-04 журам", metadata=dict(version_id="v1", document_id="d1", heading=""))]
+        write_index("v1", chunks, "Ажилтны журам", "hr-policy.docx")
+        hits, missing = search("амралт POL-04", [("v1", "Ажилтны журам", "hr-policy.docx")], 5)
+        assert not missing and {hit["id"] for hit in hits} == {"leave", "code"}
+    merged = rrf({"dense": [dict(id="x", text="same"), dict(id="y")], "sparse": [dict(id="x", sparse_score=2)]})
+    assert [item["id"] for item in merged] == ["x", "y"]
+    assert merged[0]["branch_ranks"] == {"dense": 1, "sparse": 1}
 
 
 def test_gold_requires_excerpt_and_location():

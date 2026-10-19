@@ -35,7 +35,7 @@ class FakeGemini:
             vectors.append(normalize_vector(vector, dims))
         return vectors
     def generate(self, prompt, system):
-        return json.dumps(dict(status="answered", answer="The synthetic leave rule is five working days. [S1]", sources=["S1"]))
+        return json.dumps(dict(status="answered", answer="Синтетик журмын дагуу таван ажлын өдөр байна. [S1]", sources=["S1"]), ensure_ascii=False)
 
 
 @pytest.fixture
@@ -52,6 +52,7 @@ def app(tmp_path):
     finally:
         engine.dispose()
     app = create_app(dict(TESTING=True, DATA_DIR=tmp_path, SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI=url,
+        AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite",
         EMBEDDING_DIMENSIONS=128, GEMINI_FACTORY=FakeGemini, TRUSTED_HOSTS=["localhost", "127.0.0.1"]))
     with app.app_context():
         db.drop_all()

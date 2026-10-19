@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "version_id": "c0c0ad31-c90f-41de-af31-50064c6a0d01",
+  "content_hash": "17d1d1e3fa7fc7c74c5fa7daff3ac69e8170675740ab2c8ae9d17d1fd159ccb9",
+  "documents": [
+    {
+      "id": "d71bc999-4532-5820-87c3-1e30810e8b22",
+      "text": "Remote work\n\nSYNTHETIC LEARNING FIXTURE — NOT COMPANY POLICY",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 60,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "d3dbbbce63baca0d3208991bc56f8c4b650f8eecc36ff1c8b0e2f2da7e6631ab",
+        "document_id": "5cbb6a38-aecf-4d42-b03a-7c3561057734",
+        "version_id": "c0c0ad31-c90f-41de-af31-50064c6a0d01",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "remote-en",
+      "filename": "remote-en.docx",
+      "terms": [
+        "remote-en",
+        "remote-en.docx",
+        "remote",
+        "work",
+        "synthetic",
+        "learning",
+        "fixture",
+        "not",
+        "company",
+        "policy"
+      ]
+    },
+    {
+      "id": "e6ce7373-4c69-5501-8f48-5eec7c462180",
+      "text": "Rules\n\nEmployees may work remotely 2 days per week.\n\nRemote work does not apply during equipment installation.\n\nPolicy code | REMOTE-01",
+      "metadata": {
+        "block_start": 3,
+        "block_end": 6,
+        "heading": "Rules",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 135,
+        "partial_table": false,
+        "chunk_ordinal": 1,
+        "content_hash": "3c480bc00c4132a8ff1c8dd215c0d6af83e36e96f9f27f5d70560224498de106",
+        "document_id": "5cbb6a38-aecf-4d42-b03a-7c3561057734",
+        "version_id": "c0c0ad31-c90f-41de-af31-50064c6a0d01",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "remote-en",
+      "filename": "remote-en.docx",
+      "terms": [
+        "remote-en",
+        "remote-en.docx",
+        "rules",
+        "rules",
+        "employees",
+        "may",
+        "work",
+        "remotely",
+        "2",
+        "days",
+        "per",
+        "week",
+        "remote",
+        "work",
+        "does",
+        "not",
+        "apply",
+        "during",
+        "equipment",
+        "installation",
+        "policy",
+        "code",
+        "remote-01"
+      ]
+    }
+  ]
+}

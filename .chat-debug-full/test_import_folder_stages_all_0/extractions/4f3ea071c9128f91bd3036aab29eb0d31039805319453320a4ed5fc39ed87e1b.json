@@ -1,0 +1,23 @@
+{
+  "blocks": [
+    {
+      "text": "Leave",
+      "heading": "Leave",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 1
+    },
+    {
+      "text": "Travel requests need approval.",
+      "heading": "Leave",
+      "kind": "paragraph",
+      "method": "native",
+      "block": 2
+    }
+  ],
+  "candidates": [],
+  "warnings": [
+    "DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу."
+  ],
+  "parser": "ordered-blocks-v1"
+}

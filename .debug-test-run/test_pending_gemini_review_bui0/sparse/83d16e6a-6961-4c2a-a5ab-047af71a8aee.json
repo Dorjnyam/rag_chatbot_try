@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "version_id": "83d16e6a-6961-4c2a-a5ab-047af71a8aee",
+  "content_hash": "a74f558227c071550334430dd1fa157e5d6730ad6a25bf859862392da70ad7b8",
+  "documents": [
+    {
+      "id": "5e671947-211a-50b6-94d2-78f49660f381",
+      "text": "Leave\n\nPolicy text reviewed before provider switch.",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "Leave",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 51,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "b7a3f1be32dd4ce18c4e141953389015623c5069f5fc3ef9849b2490db6a969b",
+        "document_id": "9dcfe6de-9778-466a-a33b-6fc901b17502",
+        "version_id": "83d16e6a-6961-4c2a-a5ab-047af71a8aee",
+        "language": "en",
+        "config_hash": "e0a674d2ca58e84b12e0778959153ed8cde96592c336d3f599c2a5f4e1e41cd5"
+      },
+      "title": "Provider handoff",
+      "filename": "policy.docx",
+      "terms": [
+        "provider",
+        "handoff",
+        "policy.docx",
+        "leave",
+        "leave",
+        "policy",
+        "text",
+        "reviewed",
+        "before",
+        "provider",
+        "switch"
+      ]
+    }
+  ]
+}

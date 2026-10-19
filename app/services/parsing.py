@@ -99,7 +99,7 @@ def parse_direct(source, extension, config, forced_pages=()):
     if extension == "doc":
         source = convert_doc(source, source.parent.parent / "converted" / source.stem, config)
         extension = "docx"
-        warnings.append("Converted from legacy DOC. Review tables and text order.")
+        warnings.append("Хуучин legacy DOC форматыг хөрвүүллээ. Хүснэгт болон текстийн дарааллыг шалгана уу.")
     if extension == "docx":
         document = WordDocument(source)
         heading = ""
@@ -113,12 +113,12 @@ def parse_direct(source, extension, config, forced_pages=()):
                 rows = [[normalize(cell.text) for cell in row.cells] for row in item.rows]
                 text = "\n".join(" | ".join(row) for row in rows)
                 kind = "table"
-                warnings.append("Table extracted as rows. Verify merged cells and header associations.")
+                warnings.append("Хүснэгтийг мөрөөр танилаа. Нэгтгэсэн нүд болон толгой хэсгийг шалгана уу.")
             else:
                 continue
             if text:
                 blocks.append(dict(text=text, heading=heading, kind=kind, method="native", block=len(blocks) + 1))
-        warnings.append("DOCX locations use blocks/headings, not invented page numbers. Text boxes and image text need review.")
+        warnings.append("DOCX байрлалыг хэсэг, гарчгаар тэмдэглэсэн. Текст хайрцаг болон зураг дахь бичвэрийг шалгана уу.")
     else:
         import pypdfium2 as pdfium
         import pytesseract
@@ -159,7 +159,7 @@ def parse_direct(source, extension, config, forced_pages=()):
                     except Exception as exc:
                         raise ValueError(f"OCR failed on page {index}. Check Tesseract, mon/eng data, and page timeout.") from exc
                     method, selected = "ocr", ocr
-                    warnings.append(f"Page {index}: OCR selected; compare numbers, negations, Ө and Ү with the original.")
+                    warnings.append(f"{index}-р хуудас: OCR танилтыг ашиглалаа. Тоо, үгүйсгэл, Ө болон Ү үсгийг эхтэй нь тулгана уу.")
                 candidates.append(dict(page=index, native=native, ocr=ocr, selected=method))
                 blocks.append(dict(text=selected, heading="", kind="page", method=method, page=index, block=index))
         finally:

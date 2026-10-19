@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "version_id": "87cfcb33-8f14-49bf-b47a-e391bb747da9",
+  "content_hash": "218daecfee73de4c8c29d900e52ec0248145cf5f3f3883416d9948cd4780505b",
+  "documents": [
+    {
+      "id": "37dee4a8-23fa-5021-84d5-d6211e37364d",
+      "text": "Leave\n\nRequest leave five working days in advance.",
+      "metadata": {
+        "block_start": 1,
+        "block_end": 2,
+        "heading": "Leave",
+        "extraction_method": "native",
+        "char_start": 0,
+        "char_end": 50,
+        "partial_table": false,
+        "chunk_ordinal": 0,
+        "content_hash": "ddba6112b8271b7ef01f7dc103d0c1a00328e9dc9abdb516cdfafe5a25578fd2",
+        "document_id": "35af1a7c-7f78-4e1e-bcdd-51f68cd59fa8",
+        "version_id": "87cfcb33-8f14-49bf-b47a-e391bb747da9",
+        "language": "en",
+        "config_hash": "fadf68e366d6edde0a5e89fcac6defe9a3a21874c2be115eca5f124ba4319996"
+      },
+      "title": "Leave policy",
+      "filename": "policy.docx",
+      "terms": [
+        "leave",
+        "policy",
+        "policy.docx",
+        "leave",
+        "leave",
+        "request",
+        "leave",
+        "five",
+        "working",
+        "days",
+        "in",
+        "advance"
+      ]
+    }
+  ]
+}
