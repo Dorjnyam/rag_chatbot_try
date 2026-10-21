@@ -17,7 +17,7 @@ sequenceDiagram
     participant Ingest as app/services/ingestion.py
     participant Parse as app/services/parsing.py
     participant Chunk as app/services/chunking.py
-    participant Gemini as app/services/gemini.py
+    participant OpenAI as app/services/openai_provider.py
     participant Chroma as app/services/vectorstore.py
     participant PG as PostgreSQL
 
@@ -33,8 +33,8 @@ sequenceDiagram
     Parse-->>Ingest: artifact with blocks and warnings
     Ingest->>Chunk: chunk(blocks, config, version_id)
     Chunk-->>Ingest: chunk list with IDs
-    Ingest->>Gemini: fit_chunks() / embed()
-    Gemini-->>Ingest: vectors
+    Ingest->>OpenAI: fit_chunks() / embed()
+    OpenAI-->>Ingest: vectors
     Ingest->>Chroma: upsert(collection, chunks, vectors)
     Ingest->>PG: set version.state = ready, active_version_id
     Ingest-->>Route: processed version
@@ -59,7 +59,7 @@ sequenceDiagram
     participant Rag as app/services/rag.py
     participant Retrieval as app/services/retrieval.py
     participant PG as PostgreSQL
-    participant Gemini as app/services/gemini.py
+    participant OpenAI as app/services/openai_provider.py
     participant Chroma as app/services/vectorstore.py
 
     User->>Route: POST /chat/messages {question}
@@ -68,14 +68,14 @@ sequenceDiagram
     Rag->>PG: query active versions
     PG-->>Rag: active document versions
     Rag->>Retrieval: retrieve(question, k, ...)
-    Retrieval->>Gemini: embed(question, "RETRIEVAL_QUERY")
-    Gemini-->>Retrieval: query vector
+    Retrieval->>OpenAI: embed(question, "RETRIEVAL_QUERY")
+    OpenAI-->>Retrieval: query vector
     Retrieval->>Chroma: query(collection, vector, version_ids, k)
     Chroma-->>Retrieval: hits with distance
     Retrieval-->>Rag: ordered top-k chunks
     Rag->>Rag: build_context(question, hits, history, client)
-    Rag->>Gemini: generate(prompt, SYSTEM)
-    Gemini-->>Rag: JSON answer text
+    Rag->>OpenAI: generate(prompt, SYSTEM)
+    OpenAI-->>Rag: JSON answer text
     Rag->>Rag: validate_answer(raw, selected)
     Rag->>PG: store status / answer / citations / timings
     Rag-->>Route: log, hits
@@ -88,7 +88,7 @@ sequenceDiagram
 - `ask()`-ийн эхний алхам нь `QueryLog` үүсгэх бөгөөд энэ нь trace болон telemetry-ийг хадгална
 - `retrieve()` нь PostgreSQL-оос active versions-ийг авсны дараа Chroma-д semantic query хийж, top-k hit-ийг буцаана
 - `build_context()` нь selected hit-үүдийг prompt руу оруулж, token budget-ийг хянаж, `SYSTEM` instruction-тай нэгтгэнэ
-- `Gemini.generate()`-ийн return value нь strict JSON schema-тай байх шаардлагатай
+- `OpenAIProvider.generate()`-ийн return value нь strict JSON schema-тай байх шаардлагатай
 - `validate_answer()` нь citations болон sources-ийг шалгаж, invalid answer-ыг reject хийж болно
 
 ## 4. Sample realistic question trace
@@ -103,11 +103,11 @@ sequenceDiagram
 2. `message()` parses `question` and optional `document_id`/`language` filters
 3. `ask()` creates `QueryLog`
 4. `active_versions()` filters only active + ready versions
-5. Query question is embedded via `Gemini.embed(..., "RETRIEVAL_QUERY")`
+5. Query question is embedded via `OpenAIProvider.embed(..., "RETRIEVAL_QUERY")`
 6. Each eligible Chroma collection is queried with the vector
 7. Hits are sorted by `distance`, then converted to `similarity = 1 - distance`
 8. `build_context()` selects the evidence within the token budget and labels them `S1`, `S2`, ...
-9. `Gemini.generate()` receives a JSON prompt and returns a grounded answer plus citations
+9. `OpenAIProvider.generate()` receives a JSON prompt and returns a grounded answer plus citations
 10. `validate_answer()` confirms inline citations match source labels
 11. `QueryLog` stores `answer`, `status`, `citations`, `timings`, `usage`, `trace`
 12. Client receives final JSON with answer and metadata
@@ -120,9 +120,9 @@ sequenceDiagram
 | Parse | blocks + warnings + candidates | extraction JSON artifact |
 | Chunk | text segments + metadata + UUID IDs | in-memory -> Chroma |
 | Embed | float vectors | Chroma |
-| Query | question string + query vector | in-memory + Gemini API |
+| Query | question string + query vector | in-memory + OpenAI API |
 | Retrieve | chunk text + metadata + distance | Chroma result |
-| Generate | prompt JSON + evidence + system instruction | Gemini API request |
+| Generate | prompt JSON + evidence + system instruction | OpenAI API request |
 | Persist | answer, citations, trace, timings | PostgreSQL |
 
 ## 6. Error propagation and resilience
@@ -130,7 +130,7 @@ sequenceDiagram
 - Parse errors are caught in `parse_bounded()` and surfaced as `ValueError`
 - `process()` wraps the whole indexing path and sets the version to `failed`
 - `query` errors caused by stale/corrupted active versions are caught in `ask()` and logged as query error
-- `Gemini.generate()` failures or invalid JSON returns are re-tried and validated before answer is accepted
+- `OpenAIProvider.generate()` failures or invalid JSON returns are re-tried and validated before answer is accepted
 - `still_active(hits)` checks prevent answering from documents that changed mid-flight
 
 ## 7. Important implementation detail
@@ -139,4 +139,4 @@ This system does not implement a background queue. Long-running tasks are synchr
 
 ## 8. Summary
 
-Энэ системийн end-to-end lifecycle нь: upload -> parse -> chunk -> embed -> Chroma upsert -> question -> embed -> retrieve -> context build -> Gemini generation -> validate -> persist answer. Энэ нь local, synchronous, grounded RAG sample implementation бөгөөд query, retrieval, generation, telemetry-ийн бүх гүйцэтгэл нь код дээр шууд харагдана.
+Энэ системийн end-to-end lifecycle нь: upload -> parse -> chunk -> embed -> Chroma upsert -> question -> embed -> retrieve -> context build -> OpenAI generation -> validate -> persist answer. Энэ нь local, synchronous, grounded RAG sample implementation бөгөөд query, retrieval, generation, telemetry-ийн бүх гүйцэтгэл нь код дээр шууд харагдана.

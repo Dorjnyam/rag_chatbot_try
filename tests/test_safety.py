@@ -1,4 +1,4 @@
-"""Safety and provider bounds, entirely offline and without a real database."""
+"""Safety and OpenAI request bounds, entirely offline and without a real database."""
 from contextlib import nullcontext
 from types import SimpleNamespace
 import re
@@ -7,7 +7,6 @@ import httpx
 import pytest
 from flask import Flask
 from conftest import disposable_database
-from app.services.gemini import Gemini
 from app.services.openai_provider import OpenAIProvider
 
 
@@ -60,26 +59,18 @@ def test_database_rejects_non_postgres_before_connecting():
             pass
 
 
-@pytest.mark.parametrize("kind", ["gemini", "openai"])
-def test_rewrite_transient_failure_has_one_http_attempt(kind):
+def test_openai_rewrite_transient_failure_has_one_http_attempt():
     app = Flask(__name__)
     attempts = []
     def failure(*args, **kwargs):
         attempts.append(1)
-        if kind == "gemini":
-            raise httpx.ConnectError("offline")
         from openai import APIConnectionError
         raise APIConnectionError(request=httpx.Request("POST", "https://example.invalid"))
-    if kind == "gemini":
-        adapter = Gemini.__new__(Gemini)
-        adapter.config = {"GENERATION_MODEL": "fake", "API_TIMEOUT": 1}
-        adapter.client = SimpleNamespace(models=SimpleNamespace(generate_content=failure))
-    else:
-        adapter = OpenAIProvider.__new__(OpenAIProvider)
-        adapter.config = {"API_TIMEOUT": 1, "OPENAI_REASONING_EFFORT": "none"}
-        adapter.generation_model = "fake"
-        adapter.client = SimpleNamespace(responses=SimpleNamespace(create=failure))
-        adapter.client.with_options = lambda **kwargs: adapter.client
+    adapter = OpenAIProvider.__new__(OpenAIProvider)
+    adapter.config = {"API_TIMEOUT": 1, "OPENAI_REASONING_EFFORT": "none"}
+    adapter.generation_model = "fake"
+    adapter.client = SimpleNamespace(responses=SimpleNamespace(create=failure))
+    adapter.client.with_options = lambda **kwargs: adapter.client
     adapter.deadline, adapter.attempts = None, 0
     with app.app_context(), pytest.raises(ValueError):
         adapter.rewrite_query("ajiltan 2026")

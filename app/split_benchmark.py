@@ -1,7 +1,7 @@
 """Private snapshot and offline instrumentation for the existing Split stage.
 
 This module deliberately does not import the Flask database, vector store, or
-provider factory. The only production behavior it invokes is the current
+OpenAI client factory. The only production behavior it invokes is the current
 character chunker and its local token-limit fitting method.
 """
 from __future__ import annotations

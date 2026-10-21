@@ -108,11 +108,9 @@ def readiness_checks(app):
     from .services import sparse
     from .services.storage import path
 
-    selected = app.config.get("AI_PROVIDER", "gemini")
-    checks = dict(database=False, storage=False, provider_configuration=False,
+    checks = dict(database=False, storage=False, openai_configuration=False,
         embedding_compatibility=False, dense_artifacts=False, sparse_artifacts=False)
-    checks["provider_configuration"] = selected in ("gemini", "openai") and bool(
-        app.config.get(selected.upper() + "_API_KEY") or callable(app.config.get(selected.upper() + "_FACTORY")))
+    checks["openai_configuration"] = bool(app.config.get("OPENAI_API_KEY") or callable(app.config.get("OPENAI_FACTORY")))
     try:
         root = Path(app.config["DATA_DIR"]).resolve()
         checks["storage"] = root.is_dir() and os.access(root, os.R_OK | os.W_OK | os.X_OK)

@@ -3,7 +3,7 @@ import math
 from uuid import uuid4
 import pytest
 from app.services.chunking import chunk
-from app.services.gemini import normalize_vector
+from app.services.vectors import normalize_vector
 from app.services.rag import validate_answer
 from app.services.parsing import normalize, parse_direct, validate_file
 from app.evaluation import ranking_metrics, units_for_hit, load_questions
@@ -65,33 +65,16 @@ def test_openai_embedding_rejects_over_limit_input():
         adapter.embed(["x" * 8000], "RETRIEVAL_QUERY")
 
 
-def test_provider_configuration_keeps_legacy_gemini_and_uses_openai_defaults(monkeypatch, tmp_path):
+def test_configuration_is_openai_only(monkeypatch, tmp_path):
     from app.config import settings
 
-    monkeypatch.delenv("AI_PROVIDER", raising=False)
-    monkeypatch.setenv("EMBEDDING_MODEL", "legacy-gemini-model")
-    legacy = settings(tmp_path)
-    assert legacy["AI_PROVIDER"] == "gemini"
-    assert legacy["EMBEDDING_MODEL"] == "legacy-gemini-model"
-    monkeypatch.setenv("AI_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
     selected = settings(tmp_path)
+    assert selected["EMBEDDING_PROVIDER"] == "openai"
     assert selected["EMBEDDING_MODEL"] == "text-embedding-3-small"
     assert selected["GENERATION_MODEL"] == "gpt-6-luna"
     assert selected["EMBEDDING_DIMENSIONS"] == 1536
-
-
-def test_embedding_byte_guard_splits_without_token_count_endpoint():
-    from app.services.gemini import Gemini
-    adapter = object.__new__(Gemini)
-    text = "Үүрэг " * 500
-    blocks = [dict(text=text, heading="H", block=1, method="native")]
-    config = dict(chunk_size=1800, chunk_overlap=250)
-    version = str(uuid4())
-    original = chunk(blocks, config, version)
-    result = adapter.fit_chunks(original, "gemini-embedding-001", version, config)
-    assert len(result) > len(original)
-    assert all(len(item["text"].encode()) <= 1900 for item in result)
-    assert "".join(item["text"] for item in result) == "".join(item["text"] for item in original)
+    assert "AI_PROVIDER" not in selected
 
 
 @pytest.mark.parametrize("raw", ['broken', '{}', '{"status":"answered","answer":"hi","sources":[]}', '{"status":"answered","answer":"hi [S2]","sources":["S2"]}'])

@@ -1,97 +1,74 @@
-"""Exercise the real SDK serializer and response parser, without network access."""
-import json
-from types import SimpleNamespace
+"""Exercise the OpenAI SDK serializer and response parser without network access."""
 import httpx
 import pytest
-from google import genai
-from google.genai import types
 from flask import Flask
+from openai import OpenAI
 from app.config import settings
-from app.services.gemini import Gemini
+from app.services import openai_provider
+from app.services.openai_provider import OpenAIProvider
 
 
-def test_real_sdk_embedding_count_and_generation_transport():
+def _adapter(response_handler):
     app = Flask(__name__)
-    app.config.update(settings("instance"), GEMINI_API_KEY="synthetic-not-a-real-key", EMBEDDING_DIMENSIONS=128)
-    requests = []
-    def respond(request):
-        body = json.loads(request.content)
-        requests.append((str(request.url), body))
-        if "batchEmbedContents" in str(request.url):
-            return httpx.Response(200, json={"embeddings":[{"values":[1.] + [0.] * 127}]})
-        if "countTokens" in str(request.url):
-            return httpx.Response(200, json={"totalTokens":12})
-        return httpx.Response(200, json={"candidates":[{"content":{"parts":[{"text":'{"status":"insufficient_evidence","answer":"No evidence","sources":[]}'}], "role":"model"}, "finishReason":"STOP"}]})
+    app.config.update(settings("instance"), OPENAI_API_KEY="fake",
+        OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=2,
+        OPENAI_GENERATION_MODEL="gpt-test", API_TIMEOUT=5)
     with app.app_context():
-        adapter = Gemini()
-        adapter.client = genai.Client(api_key="synthetic-not-a-real-key", http_options=types.HttpOptions(client_args={"transport":httpx.MockTransport(respond)}, retry_options=types.HttpRetryOptions(attempts=1)))
-        assert len(adapter.embed(["hello"], "RETRIEVAL_DOCUMENT")[0]) == 128
-        assert adapter.count("hello") == 12
-        assert json.loads(adapter.generate("no evidence", "grounded"))["status"] == "insufficient_evidence"
-        assert requests[0][1]["requests"][0]["taskType"] == "RETRIEVAL_DOCUMENT"
-        assert "autoTruncate" not in requests[0][1]["requests"][0]
+        adapter = OpenAIProvider()
         adapter.client.close()
+        adapter.client = OpenAI(api_key="fake", http_client=httpx.Client(
+            transport=httpx.MockTransport(response_handler)), max_retries=0)
+    return app, adapter
 
 
-def test_sdk_permanent_error_does_not_retry():
-    app = Flask(__name__)
-    app.config.update(settings("instance"), GEMINI_API_KEY="fake")
-    calls = []
-    def respond(request):
-        calls.append(request)
-        return httpx.Response(403, json={"error":{"code":403,"message":"denied","status":"PERMISSION_DENIED"}})
-    with app.app_context():
-        adapter = Gemini()
-        adapter.client = genai.Client(api_key="fake", http_options=types.HttpOptions(client_args={"transport":httpx.MockTransport(respond)}, retry_options=types.HttpRetryOptions(attempts=1)))
-        with pytest.raises(ValueError, match="403"):
-            adapter.embed(["hello"], "RETRIEVAL_QUERY")
-        assert len(calls) == 1
-        adapter.client.close()
-
-
-def test_sdk_transient_retry_and_expired_deadline(monkeypatch):
-    import time
-    from app.services import gemini
-    app = Flask(__name__)
-    app.config.update(settings("instance"), GEMINI_API_KEY="fake", EMBEDDING_DIMENSIONS=128)
+def test_openai_embedding_indexes_model_identity_and_retry_are_observable(monkeypatch):
     calls, sleeps = [], []
-    def respond(request):
+
+    def response(request):
         calls.append(request)
         if len(calls) == 1:
-            return httpx.Response(429, headers={"Retry-After":"2"}, json={"error":{"code":429,"message":"quota","status":"RESOURCE_EXHAUSTED"}})
-        return httpx.Response(200, json={"embeddings":[{"values":[1.] + [0.] * 127}]})
-    monkeypatch.setattr(gemini.time, "sleep", sleeps.append)
+            return httpx.Response(429, json={"error": {"message": "busy", "type": "rate_limit_error",
+                "code": "rate_limit_exceeded", "param": None}})
+        return httpx.Response(200, json={"object": "list", "data": [
+            {"object": "embedding", "index": 1, "embedding": [0.0, 1.0]},
+            {"object": "embedding", "index": 0, "embedding": [1.0, 0.0]}],
+            "model": "text-embedding-3-small", "usage": {"prompt_tokens": 3, "total_tokens": 3}})
+
+    monkeypatch.setattr(openai_provider.time, "sleep", sleeps.append)
+    app, adapter = _adapter(response)
     with app.app_context():
-        adapter = Gemini()
-        adapter.client = genai.Client(api_key="fake", http_options=types.HttpOptions(client_args={"transport":httpx.MockTransport(respond)}, retry_options=types.HttpRetryOptions(attempts=1)))
-        assert adapter.embed(["hello"], "RETRIEVAL_QUERY")
-        assert len(calls) == 2 and sleeps[0] >= 2
-        adapter.deadline = time.monotonic() - 1
-        with pytest.raises(ValueError, match="deadline"):
-            adapter.count("hello")
-        assert len(calls) == 2
+        vectors = adapter.embed(["document", "query"], "RETRIEVAL_QUERY")
+        assert vectors == [[1.0, 0.0], [0.0, 1.0]]
+        assert len(calls) == 2 and len(sleeps) == 1
+        assert adapter.attempts == 2
+        assert adapter.embedding_response_models == {"text-embedding-3-small"}
+        assert adapter.embedding_request_latency_ms and adapter.usage["embedding"]["total_tokens"] == 3
+        assert len(adapter.provider_attempt_latency_ms) == 2
         adapter.close()
 
 
-def test_structured_quota_retry_and_deadline(monkeypatch):
-    import time
-    from app.services import gemini
-    app = Flask(__name__)
-    app.config.update(settings("instance"), GEMINI_API_KEY="fake", EMBEDDING_DIMENSIONS=128)
-    calls, sleeps = [], []
-    def respond(request):
-        calls.append(request)
-        if len(calls) in (1, 3):
-            return httpx.Response(429, json={"error":{"code":429,"message":"quota", "details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo", "retryDelay":"45s"}]}})
-        return httpx.Response(200, json={"embeddings":[{"values":[1.] + [0.] * 127}]})
-    monkeypatch.setattr(gemini.time, "sleep", sleeps.append)
+def test_openai_embedding_rejects_unknown_task_and_bad_response_indexes():
+    def duplicate_indexes(_request):
+        return httpx.Response(200, json={"object": "list", "data": [
+            {"object": "embedding", "index": 0, "embedding": [1.0, 0.0]},
+            {"object": "embedding", "index": 0, "embedding": [0.0, 1.0]}],
+            "model": "text-embedding-3-small", "usage": {"prompt_tokens": 2, "total_tokens": 2}})
+    app, adapter = _adapter(duplicate_indexes)
     with app.app_context():
-        adapter = Gemini()
-        adapter.client = genai.Client(api_key="fake", http_options=types.HttpOptions(client_args={"transport":httpx.MockTransport(respond)}, retry_options=types.HttpRetryOptions(attempts=1)))
-        assert adapter.embed(["hello"], "RETRIEVAL_QUERY")
-        assert sleeps == [30, 15]
-        adapter.deadline = time.monotonic() + 10
-        with pytest.raises(ValueError, match="retry would exceed"):
-            adapter.embed(["hello"], "RETRIEVAL_QUERY")
-        assert len(calls) == 3 and sum(sleeps) == 45
+        with pytest.raises(ValueError, match="task"):
+            adapter.embed(["x"], "OTHER")
+        with pytest.raises(ValueError, match="indexes"):
+            adapter.embed(["x", "y"], "RETRIEVAL_DOCUMENT")
+        adapter.close()
+
+
+def test_openai_embedding_rejects_unavailable_or_different_model_identity():
+    def wrong_model(_request):
+        return httpx.Response(200, json={"object": "list", "data": [
+            {"object": "embedding", "index": 0, "embedding": [1.0, 0.0]}],
+            "model": "different-model", "usage": {"prompt_tokens": 1, "total_tokens": 1}})
+    app, adapter = _adapter(wrong_model)
+    with app.app_context():
+        with pytest.raises(ValueError, match="response model"):
+            adapter.embed(["x"], "RETRIEVAL_DOCUMENT")
         adapter.close()

@@ -2,7 +2,7 @@
 
 `app/services/language.py:query_candidates` original query-г NFC болон зайгаар нормчилж, `mn_cyrl`, `mn_latn`, `en`, `mixed`, `unknown` ангилал болон confidence буцаана. Нэр, acronym, URL, дугаар, кодыг хамгаална. `mn_latn` үед зөвхөн танигдсан бүтэн үгийг толь болон нийтлэг хувилбараар кирилл candidate болгоно. Танигдаагүй үг, холимог English segment хүчээр орчуулагдахгүй. Original асуулт үргэлж хадгалагдана; нийт давхцаагүй candidate гурваас ихгүй.
 
-Англи query эх хувилбараараа dense embedding-д орно. Баримтын хэлээр query-г автоматаар шүүхгүй; зөвхөн хэрэглэгч explicit document-language filter сонгосон үед шүүнэ. `QUERY_REWRITING_ENABLED=false` анхдагч. Идэвхжсэн бол mixed/unknown query-д хамгийн ихдээ нэг Gemini structured request хийнэ. Урт болон хамгаалсан identifier шалгалт амжилтгүй бол original candidate хэвээр.
+Англи query эх хувилбараараа dense embedding-д орно. Баримтын хэлээр query-г автоматаар шүүхгүй; зөвхөн хэрэглэгч explicit document-language filter сонгосон үед шүүнэ. `QUERY_REWRITING_ENABLED=false` анхдагч. Идэвхжсэн бол mixed/unknown query-д хамгийн ихдээ нэг OpenAI structured request хийнэ. Урт болон хамгаалсан identifier шалгалт амжилтгүй бол original candidate хэвээр.
 
 ## Хариултын хэл ба UI
 

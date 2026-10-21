@@ -3,7 +3,7 @@
 
 ## 1. Objective
 
-Энэ баримт нь retrieval-ээр олдсон evidence-ийг хэрхэн prompt-д оруулж, Gemini-ээр grounded answer гаргахыг тайлбарлана. Энэ нь RAG системийн хамгийн сүүлийн үе шат бөгөөд "retrieved chunks + system instructions + conversation context"-ийг 1 JSON prompt болгон бэлдэх ажил юм.
+Энэ баримт нь retrieval-ээр олдсон evidence-ийг хэрхэн prompt-д оруулж, OpenAI-ээр grounded answer гаргахыг тайлбарлана. Энэ нь RAG системийн хамгийн сүүлийн үе шат бөгөөд "retrieved chunks + system instructions + conversation context"-ийг 1 JSON prompt болгон бэлдэх ажил юм.
 
 ## 2. Augmentation flow
 
@@ -15,7 +15,7 @@ flowchart LR
     H --> C
     C --> P["Prompt JSON"]
     P --> S["System instruction"]
-    S --> G["Gemini.generate()"]
+    S --> G["OpenAIProvider.generate()"]
     G --> A["JSON answer"]
     A --> V["validate_answer()"]
     V --> F["Final API response"]
@@ -79,9 +79,9 @@ flowchart LR
 
 Энэ нь model-ийг evidence-ээс гадуур мэдээлэл гаргаж, invented answer хийхээс хамгаална.
 
-## 6. Gemini generation call
+## 6. OpenAI generation call
 
-`Gemini.generate()` [app/services/gemini.py](../app/services/gemini.py) ашиглан generation API-г дуудна.
+`OpenAIProvider.generate()` [app/services/openai_provider.py](../app/services/openai_provider.py) ашиглан generation API-г дуудна.
 
 - `system_instruction=SYSTEM`
 - `temperature=0`
@@ -153,4 +153,4 @@ flowchart LR
 
 ## 12. Summary
 
-Энэ proyekтийн augmentation pipeline нь classic grounded RAG хэлбэртэй. Retrieval-ээр захсан chunks-ийг prompt руу оруулж, системийн заавар, conversation history, source labels, JSON schema зэрэгт дагуу Gemini-ээр хариу үүсгэдэг. Хариулт хамгийн гол нь "evidence + validation + citations" принцип дээр суурилсан бөгөөд энэ нь strong grounding feature-ийг үүсгэдэг.
+Энэ proyekтийн augmentation pipeline нь classic grounded RAG хэлбэртэй. Retrieval-ээр захсан chunks-ийг prompt руу оруулж, системийн заавар, conversation history, source labels, JSON schema зэрэгт дагуу OpenAI-ээр хариу үүсгэдэг. Хариулт хамгийн гол нь "evidence + validation + citations" принцип дээр суурилсан бөгөөд энэ нь strong grounding feature-ийг үүсгэдэг.

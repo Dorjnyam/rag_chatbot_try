@@ -12,7 +12,7 @@ from app.services.storage import read_json, write_json
 
 def _application(tmp_path):
     app = Flask(__name__)
-    app.config.update(DATA_DIR=tmp_path, AI_PROVIDER="openai", EMBEDDING_MODEL="test",
+    app.config.update(DATA_DIR=tmp_path, EMBEDDING_MODEL="test",
         EMBEDDING_DIMENSIONS=3, DENSE_TOP_K=15, SPARSE_TOP_K=15, RRF_K=60,
         RETRIEVAL_MODE="hybrid", RERANKING_ENABLED=False)
     return app

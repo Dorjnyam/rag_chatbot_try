@@ -16,13 +16,13 @@ flowchart TD
     C --> F["app/services/rag.py"]
     E --> G["app/services/parsing.py"]
     E --> H["app/services/chunking.py"]
-    E --> I["app/services/gemini.py"]
+    E --> I["app/services/openai_provider.py"]
     E --> J["app/services/vectorstore.py"]
     F --> K["app/services/retrieval.py"]
     K --> I
     K --> J
     F --> I
-    I --> L["Gemini API"]
+    I --> L["OpenAI API"]
     J --> M["ChromaDB"]
     E --> N["PostgreSQL"]
     F --> N
@@ -37,13 +37,13 @@ flowchart TD
     R1["message()"] --> R2["ask()"]
     R2 --> F1["active_versions()"]
     R2 --> F2["retrieve()"]
-    F2 --> G1["Gemini.embed()"]
+    F2 --> G1["OpenAIProvider.embed()"]
     F2 --> V1["VectorStore.query()"]
     V1 --> C1["ChromaDB"]
     R2 --> B1["build_context()"]
-    B1 --> G2["Gemini.count()"]
-    R2 --> G3["Gemini.generate()"]
-    G3 --> L["Gemini API"]
+    B1 --> G2["OpenAIProvider.count()"]
+    R2 --> G3["OpenAIProvider.generate()"]
+    G3 --> L["OpenAI API"]
     R2 --> A1["validate_answer()"]
     R2 --> DB["PostgreSQL QueryLog"]
     R2 --> R3["trace_without_text()"]
@@ -62,8 +62,8 @@ flowchart TD
     P3 --> P4["main()"]
     P4 --> P5["parse_direct()"]
     P5 --> C1["chunk()"]
-    C1 --> G1["Gemini.fit_chunks()"]
-    G1 --> G2["Gemini.embed()"]
+    C1 --> G1["OpenAIProvider.fit_chunks()"]
+    G1 --> G2["OpenAIProvider.embed()"]
     G2 --> S1["VectorStore.upsert()"]
     S1 --> C2["ChromaDB"]
     I2 --> DB["PostgreSQL"]
@@ -76,7 +76,7 @@ flowchart LR
     HTTP[HTTP Request] --> Route[Flask Blueprint route]
     Route --> Service[Business service]
     Service --> SQL[(PostgreSQL)]
-    Service --> Ext[Gemini SDK / Chroma]
+    Service --> Ext[OpenAI SDK / Chroma]
     Ext --> API[External API / Vector DB]
     API --> Service
     Service --> Response[HTTP Response]
@@ -92,13 +92,13 @@ flowchart LR
 | [app/extensions.py](../app/extensions.py) | DB extension setup | `db`, `migrate` | Flask-SQLAlchemy, Flask-Migrate | session configuration |
 | [app/routes/documents.py](../app/routes/documents.py) | document lifecycle UI/API | `upload()`, `process()`, `approve()`, `reindex()`, `delete()` | Flask, SQLAlchemy | document operations |
 | [app/routes/chat.py](../app/routes/chat.py) | chat and query UI/API | `message()`, `query()`, `evaluation()` | Flask, SQLAlchemy | user-facing query flow |
-| [app/services/ingestion.py](../app/services/ingestion.py) | document indexing pipeline | `upload()`, `process()`, `approve()`, `reindex()`, `delete_document()` | PostgreSQL, Chroma, Gemini | main orchestration |
+| [app/services/ingestion.py](../app/services/ingestion.py) | document indexing pipeline | `upload()`, `process()`, `approve()`, `reindex()`, `delete_document()` | PostgreSQL, Chroma, OpenAI | main orchestration |
 | [app/services/parsing.py](../app/services/parsing.py) | extraction and OCR | `normalize()`, `validate_file()`, `convert_doc()`, `parse_direct()`, `parse_bounded()` | pypdf, python-docx, OCR dependencies | PDF/DOCX/DOC parsing |
 | [app/services/chunking.py](../app/services/chunking.py) | chunk slicing | `chunk()`, `assign_ids()` | filesystem metadata | chunk windowing |
-| [app/services/gemini.py](../app/services/gemini.py) | SDK wrapper | `Gemini`, `count()`, `fit_chunks()`, `embed()`, `generate()` | Google GenAI SDK | embedding and generation |
+| [app/services/openai_provider.py](../app/services/openai_provider.py) | OpenAI SDK wrapper | `OpenAIProvider`, `count()`, `fit_chunks()`, `embed()`, `generate()` | OpenAI SDK | Embedding, token counting, and generation |
 | [app/services/vectorstore.py](../app/services/vectorstore.py) | Chroma abstraction | `VectorStore`, `collection()`, `upsert()`, `query()`, `delete_version()` | chromadb | vector storage |
-| [app/services/retrieval.py](../app/services/retrieval.py) | retrieval orchestration | `active_versions()`, `still_active()`, `retrieve()` | SQLAlchemy, Chroma, Gemini | search layer |
-| [app/services/rag.py](../app/services/rag.py) | orchestration + validation | `language_of()`, `build_context()`, `validate_answer()`, `ask()` | PostgreSQL, Gemini | prompt build and answer validation |
+| [app/services/retrieval.py](../app/services/retrieval.py) | retrieval orchestration | `active_versions()`, `still_active()`, `retrieve()` | SQLAlchemy, Chroma, OpenAI | search layer |
+| [app/services/rag.py](../app/services/rag.py) | orchestration + validation | `language_of()`, `build_context()`, `validate_answer()`, `ask()` | PostgreSQL, OpenAI | prompt build and answer validation |
 | [app/services/storage.py](../app/services/storage.py) | filesystem helpers | `root()`, `fingerprint()`, `path()`, `write_json()`, `read_json()` | `flask.current_app` | data artifact management |
 | [app/services/parse_worker.py](../app/services/parse_worker.py) | subprocess parser | `main()` | Python subprocess | bounded extraction worker |
 
@@ -122,7 +122,7 @@ flowchart LR
 
 ### Embedding
 
-- [app/services/gemini.py](../app/services/gemini.py): `Gemini.embed()` and `fit_chunks()`
+- [app/services/openai_provider.py](../app/services/openai_provider.py): `OpenAIProvider.embed()` and `fit_chunks()`
 
 ### Vector database
 
@@ -136,7 +136,7 @@ flowchart LR
 
 ### LLM communication
 
-- [app/services/gemini.py](../app/services/gemini.py): `Gemini.generate()` and token counting
+- [app/services/openai_provider.py](../app/services/openai_provider.py): `OpenAIProvider.generate()` and token counting
 
 ### Configuration
 
@@ -150,11 +150,11 @@ flowchart LR
 ## 8. Verified behavioral findings
 
 - There is no dedicated `services/rag_service.py` file; the real orchestration is in [app/services/rag.py](../app/services/rag.py).
-- There is no standalone `llm_service.py` file; Gemini integration is in [app/services/gemini.py](../app/services/gemini.py).
+- There is no standalone `llm_service.py` file; OpenAI integration is in [app/services/openai_provider.py](../app/services/openai_provider.py).
 - `DocumentVersion` is the authoritative versioned unit; Chroma collections are keyed by version collection names.
 - Search only touches active versions that are still `ready` and whose `Document.state == "active"`.
 - Grounded answer validation is a real implementation detail, not just a conceptual idea.
 
 ## 9. Summary
 
-Энэ төсөл нь модульчлагдсан, гэхдээ нэг төрлийн "small local RAG" бүтэцтэй. App layers нь route -> service -> SQL/Chroma/Gemini breakdown-тай ажилладаг. Хамгийн гол нь Chroma нь vector storage, PostgreSQL нь lifecycle metadata storage, Gemini нь embedding + generation provider, [app/services/rag.py](../app/services/rag.py) нь orchestration болон grounded validation layer-ийг гүйцэтгэдэг.
+Энэ төсөл нь модульчлагдсан, гэхдээ нэг төрлийн "small local RAG" бүтэцтэй. App layers нь route -> service -> SQL/Chroma/OpenAI breakdown-тай ажилладаг. Хамгийн гол нь Chroma нь vector storage, PostgreSQL нь lifecycle metadata storage, OpenAI нь embedding + generation provider, [app/services/rag.py](../app/services/rag.py) нь orchestration болон grounded validation layer-ийг гүйцэтгэдэг.

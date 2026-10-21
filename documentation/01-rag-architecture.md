@@ -3,12 +3,12 @@
 
 ## 1. Objective
 
-Энэ баримт нь энэ төсөлд хэрэгжүүлсэн Retrieval-Augmented Generation (RAG) архитектурыг кодын жинхэнэ хэрэгжилтээр тайлбарлах зорилготой. Системийн гол зорилго нь баримт бичгийг хадгалах, текстийг чангаараар задлах, embedding үүсгэх, semantic search хийх, улмаар Gemini API-тай холбогдож grounded answer гаргах явдал юм.
+Энэ баримт нь энэ төсөлд хэрэгжүүлсэн Retrieval-Augmented Generation (RAG) архитектурыг кодын жинхэнэ хэрэгжилтээр тайлбарлах зорилготой. Системийн гол зорилго нь баримт бичгийг хадгалах, текстийг чангаараар задлах, embedding үүсгэх, semantic search хийх, улмаар OpenAI API-тай холбогдож grounded answer гаргах явдал юм.
 
 Энэ проект нь "RAG"-ийн үндсэн 2 том шугамтай ажилладаг:
 
 1. Offline / Indexing pipeline - баримт upload, parse, chunk, embed, Chroma индекс үүсгэх
-2. Online / Query pipeline - хэрэглэгчийн асуулт, embedding, Chroma query, prompt-ийг бэлдэх, Gemini генераци
+2. Online / Query pipeline - хэрэглэгчийн асуулт, embedding, Chroma query, prompt-ийг бэлдэх, OpenAI генераци
 
 Төслийн файлд хэрэглэгдэж буй бодит бүрэлдэхүүн хэсгүүдийг доор нэгтгэн үзүүлнэ.
 
@@ -34,7 +34,7 @@ flowchart LR
         R1 --> V
         V --> H["Top-k relevant chunks"]
         H --> B["build_context()"]
-        B --> G["Gemini generate()"]
+        B --> G["OpenAI generate()"]
         G --> O["JSON answer + citations"]
         O --> U
     end
@@ -45,12 +45,12 @@ flowchart LR
 - Document upload/review route нь [app/routes/documents.py](../app/routes/documents.py) дахь `/documents` болон `/versions/<version_id>/process`-ээр эхэлнэ.
 - Parsing нь [app/services/parsing.py](../app/services/parsing.py) дотор PDF/DOCX/DOC файл доторх текстийг боловсруулна.
 - Chunking нь [app/services/chunking.py](../app/services/chunking.py) дотор 1800/250 character window-тай ажиллана.
-- Embedding нь [app/services/gemini.py](../app/services/gemini.py) дахь `Gemini.embed()` ашиглан `gemini-embedding-001` моделийг хэрэглэнэ.
+- Embedding нь [app/services/openai_provider.py](../app/services/openai_provider.py) дахь `OpenAIProvider.embed()` ашиглан `text-embedding-3-small` моделийг хэрэглэнэ.
 - Vector storage нь [app/services/vectorstore.py](../app/services/vectorstore.py) дахь `VectorStore`-ээр Chroma PersistentClient ашиглан хадгална.
 - Query pipeline нь [app/services/rag.py](../app/services/rag.py) `ask()` function-аас эхэлж, retrieval, prompt construction, generation-аар дамжина.
 - PostgreSQL нь зөвхөн metadata, version lifecycle, query logs, evaluation records, document state-ийг хадгална; Chroma нь текст болон embedding vector-ийг хадгалдаг.
 
-## 3. Actual Flask + PostgreSQL + Chroma + Gemini interaction
+## 3. Actual Flask + PostgreSQL + Chroma + OpenAI interaction
 
 ```mermaid
 flowchart TB
@@ -59,8 +59,8 @@ flowchart TB
     Routes --> Postgres["PostgreSQL"]
     Routes --> Services["Services"]
     Services --> Chroma["Chroma vector DB"]
-    Services --> Gemini["Gemini API"]
-    Gemini --> LLM["Gemini model"]
+    Services --> OpenAI["OpenAI API"]
+    OpenAI --> LLM["OpenAI model"]
     Chroma --> Retrieved["Relevant chunks"]
     Retrieved --> Services
     Services --> Response["JSON response + citations"]
@@ -78,13 +78,13 @@ flowchart TB
 
 ### Online / Query pipeline
 
-- User question -> `ask()` -> `retrieve()` -> active version filter -> embedding -> Chroma `query()` -> top-k chunks -> prompt build -> Gemini JSON generation -> citations validation
+- User question -> `ask()` -> `retrieve()` -> active version filter -> embedding -> Chroma `query()` -> top-k chunks -> prompt build -> OpenAI JSON generation -> citations validation
 
 ## 5. Why embeddings are needed
 
 Embedding нь хүний текстийг олон хэмжээст вектор болгон хувиргадаг. Энэ нь semantic similarity search-д ашиглагддаг. Жишээ нь "сургалтын чөлөөний тухай хууль" гэсэн түлхүүр үгстэй ойролцоо утгатай текстийг хэмжээст зайгаар хайж олно. Энэ төсөлд:
 
-- `Gemini.embed()` нь текстийг vector болгон буцаана
+- `OpenAIProvider.embed()` нь текстийг vector болгон буцаана
 - `VectorStore.query()` нь `n_results=k`-тайгаар Chroma-оос хамгийн ойр векторуудыг хайна
 - Chroma нь `hnsw` + `cosine` space ашиглан хадгална
 
@@ -110,11 +110,11 @@ Embedding нь хүний текстийг олон хэмжээст векто�
 | `ingestion.process()` | the indexer orchestration | `DocumentVersion` | staged/ready version with chunks + vectors | [app/services/ingestion.py](../app/services/ingestion.py) |
 | `parse_direct()` | parse raw document text | source file + extension | blocks + warnings | [app/services/parsing.py](../app/services/parsing.py) |
 | `chunk()` | split blocks into retrieval units | parsed text blocks | chunk list + IDs | [app/services/chunking.py](../app/services/chunking.py) |
-| `Gemini.embed()` | produce vector embeddings | text batch | normalized vectors | [app/services/gemini.py](../app/services/gemini.py) |
+| `OpenAIProvider.embed()` | produce vector embeddings | text batch | normalized vectors | [app/services/openai_provider.py](../app/services/openai_provider.py) |
 | `VectorStore.upsert()` | write vectors to Chroma | chunks + vectors | searchable collections | [app/services/vectorstore.py](../app/services/vectorstore.py) |
 | `retrieve()` | embed query + similarity search | user question | top-k relevant hits | [app/services/retrieval.py](../app/services/retrieval.py) |
 | `build_context()` | select evidence and build prompt | hits + chat history | JSON prompt + selected evidence | [app/services/rag.py](../app/services/rag.py) |
-| `Gemini.generate()` | produce grounded answer | prompt + system instruction | JSON answer | [app/services/gemini.py](../app/services/gemini.py) |
+| `OpenAIProvider.generate()` | produce grounded answer | prompt + system instruction | JSON answer | [app/services/openai_provider.py](../app/services/openai_provider.py) |
 
 ## 9. Summary
 
@@ -123,7 +123,7 @@ Embedding нь хүний текстийг олон хэмжээст векто�
 - PostgreSQL metadata ownership
 - Chroma vector ownership
 - filesystem extraction artifacts
-- Gemini embedding + generation
+- OpenAI embedding + generation
 - grounded answer contract with source labels
 - explicit review/approval before indexing
 

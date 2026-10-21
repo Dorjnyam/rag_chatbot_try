@@ -60,13 +60,12 @@ def public_chat_error(log):
     if log.error and "different embedding space" in log.error:
         from ..services.retrieval import incompatible_active_count
         count = incompatible_active_count()
-        target = current_app.config["AI_PROVIDER"]
-        return (f"{count} идэвхтэй индекс одоогийн {target.upper()} embedding-тэй нийцэхгүй байна. "
-            f"Шилжүүлэх жагсаалтыг шалгахын тулд: flask migrate-indexes prepare --target-provider {target} --dry-run")
+        return (f"{count} идэвхтэй индекс одоогийн OpenAI embedding-тэй нийцэхгүй байна. "
+            "Шилжүүлэх жагсаалтыг шалгахын тулд: flask migrate-indexes prepare --dry-run")
     messages = dict(
-        provider_key_missing='Сонгосон үйлчилгээний API түлхүүр тохируулаагүй байна. Локал .env тохиргоогоо шалгана уу.',
-        provider_quota='AI үйлчилгээний квот эсвэл төлбөрийн хязгаарт хүрсэн байна. Хэрэглээ болон төлбөрийн тохиргоогоо шалгана уу.',
-        provider_request_failed='AI үйлчилгээ хүсэлтийг гүйцэтгэсэнгүй. Model access, үйлчилгээний төлөв болон тохиргоогоо шалгана уу.',
+        provider_key_missing='OpenAI API түлхүүр тохируулаагүй байна. Локал .env тохиргоогоо шалгана уу.',
+        provider_quota='OpenAI API-ийн квот эсвэл төлбөрийн хязгаарт хүрсэн байна. Хэрэглээгээ шалгана уу.',
+        provider_request_failed='OpenAI хүсэлтийг гүйцэтгэсэнгүй. Model access болон үйлчилгээний төлөвийг шалгана уу.',
         request_deadline='Хүсэлт боловсруулах хугацааны хязгаарт хүрлээ. Дахин оролдоно уу.',
         question_too_long='Асуулт embedding-ийн багтаамжаас хэтэрлээ. Асуултаа товчилж дахин илгээнэ үү.',
         documents_changed='Хайлт хийх үед баримтын хувилбар өөрчлөгдсөн байна. Асуултаа дахин илгээнэ үү.')

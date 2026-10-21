@@ -171,7 +171,7 @@ def _run_evaluation(file, split, generate, k, allow_unreviewed):
     snapshot = dict(corpus=corpus, corpus_hash=fingerprint(corpus), dataset_hash=revision, split=split,
         metric_revision=METRIC_REVISION, relevance_mapping=mapping_status,
         reviewed=all(q.get("review_status") == "reviewed" for q in selected),
-        packages={name: importlib.metadata.version(name) for name in ("Flask", "SQLAlchemy", "chromadb", "google-genai", "openai", "tiktoken", "pypdf", "python-docx", "pytesseract")})
+        packages={name: importlib.metadata.version(name) for name in ("Flask", "SQLAlchemy", "chromadb", "openai", "tiktoken", "pypdf", "python-docx", "pytesseract")})
     run = EvaluationRun(id=uid(), snapshot=snapshot, config=dict(config_snapshot(k), generate=generate))
     db.session.add(run)
     for q in selected:
@@ -232,7 +232,7 @@ def compare_runs(first, second):
     if first.config.get("top_k") != second.config.get("top_k"):
         raise ValueError("Runs require the same final K.")
     def embedding_space(run):
-        return (run.config.get("provider", "gemini"), run.config.get("embedding_model"), run.config.get("dimensions"),
+        return (run.config.get("provider", "openai"), run.config.get("embedding_model"), run.config.get("dimensions"),
             tuple(sorted({v.get("index_config", {}).get("normalization", "l2-v1") for v in run.snapshot["corpus"]})))
     if embedding_space(first) != embedding_space(second):
         raise ValueError("Runs require the same embedding space.")

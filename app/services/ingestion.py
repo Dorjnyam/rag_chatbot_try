@@ -12,7 +12,8 @@ from ..models import Document, DocumentVersion, now, uid
 from .storage import fingerprint, mutation_lock, path, read_json, write_json
 from .parsing import PARSER_REVISION, classify_error, parser_info, parse_bounded, native_fingerprint
 from .chunking import chunk
-from .providers import provider
+from .embedding_contract import collection_contract_metadata, compatible_embedding_spaces, embedding_contract
+from .openai_provider import openai_client
 from .vectorstore import store
 from . import sparse
 
@@ -40,22 +41,19 @@ def _upload_error_category(error, stage, extension):
     return "storage_or_database_failure"
 
 
-def index_config(provider_name=None):
+def index_config():
     c = current_app.config
-    selected = (provider_name or c.get("AI_PROVIDER", "gemini")).casefold()
-    if selected == "openai":
-        model, dimensions = c["OPENAI_EMBEDDING_MODEL"], c["OPENAI_EMBEDDING_DIMENSIONS"]
-        fit_revision = "openai-tokenfit-v1"
-    elif selected == "gemini":
-        model = c["GEMINI_EMBEDDING_MODEL"] if provider_name else c["EMBEDDING_MODEL"]
-        dimensions = c["GEMINI_EMBEDDING_DIMENSIONS"] if provider_name else c["EMBEDDING_DIMENSIONS"]
-        fit_revision = "gemini-bytefit-v1"
-    else:
-        raise ValueError("Target provider must be openai or gemini.")
-    return dict(parser=PARSER_REVISION, strategy="characters-v1", chunk_size=c["CHUNK_SIZE"], chunk_overlap=c["CHUNK_OVERLAP"],
-        provider=selected, embedding_model=model, dimensions=dimensions, normalization="l2-v1", chunk_fitting=fit_revision,
+    model, dimensions = c["OPENAI_EMBEDDING_MODEL"], c["OPENAI_EMBEDDING_DIMENSIONS"]
+    model_revision = c.get("OPENAI_EMBEDDING_MODEL_REVISION") or None
+    result = dict(parser=PARSER_REVISION, strategy="characters-v1", chunk_size=c["CHUNK_SIZE"], chunk_overlap=c["CHUNK_OVERLAP"],
+        provider="openai", embedding_model=model, embedding_model_revision=model_revision, dimensions=dimensions,
+        embedding_preprocessing_version="raw-input-v1", normalization="l2-v1",
+        query_document_compatibility="symmetric-input-v1",
+        chunk_fitting="openai-tokenfit-v1",
         ocr_languages=c["OCR_LANGUAGES"], ocr_min_characters=c["OCR_MIN_CHARACTERS"], forced_pages=[],
-        embedding_input_guard="utf8-1900-v1", native_tools=native_fingerprint(c))
+          embedding_input_guard="tokens-7900-v1", native_tools=native_fingerprint(c))
+    result.update(collection_contract_metadata(result))
+    return result
 
 
 def get_document(id_):
@@ -248,9 +246,7 @@ def process(version_id, require_review=False):
         # unindexed builds to the selected embedding space; retain extraction choices.
         target_config = index_config()
         old_config = version.config or {}
-        identity = (old_config.get("provider", "gemini"), old_config.get("embedding_model"), old_config.get("dimensions"))
-        target_identity = (target_config["provider"], target_config["embedding_model"], target_config["dimensions"])
-        if identity != target_identity:
+        if not compatible_embedding_spaces(old_config, target_config):
             if document.active_version_id == version.id:
                 raise ValueError("Cannot change embedding configuration of an active version; prepare a provider migration.")
             previous_collection = version.collection_name
@@ -344,10 +340,11 @@ def process(version_id, require_review=False):
             chunks = chunk(artifact["blocks"], version.config, version.id)
             if not chunks:
                 raise ValueError("No usable chunks; this version cannot activate.")
-            client = provider(deadline=deadline)
+            client = openai_client(deadline=deadline)
             chunks = client.fit_chunks(chunks, version.config["embedding_model"], version.id, version.config)
             for item in chunks:
-                item["metadata"].update(document_id=document.id, version_id=version.id, language=document.language, config_hash=version.config_hash)
+                item["metadata"].update(document_id=document.id, version_id=version.id, language=document.language,
+                    config_hash=version.config_hash, **collection_contract_metadata(version.config))
             version.expected_chunks = len(chunks)
             version.manifest_path = f"manifests/{version.id}.json"
             write_json(version.manifest_path, [{"id": c["id"], "metadata": c["metadata"]} for c in chunks])
@@ -357,7 +354,7 @@ def process(version_id, require_review=False):
             vectors.delete_version(version.collection_name, version.id)
             for batch in embedding_batches(chunks, current_app.config["EMBEDDING_BATCH_SIZE"]):
                 embedded = client.embed([c["text"] for c in batch], "RETRIEVAL_DOCUMENT", version.config["embedding_model"], version.config["dimensions"])
-                vectors.upsert(version.collection_name, batch, embedded)
+                vectors.upsert(version.collection_name, batch, embedded, version.config)
             if vectors.ids(version.collection_name, version.id) != {c["id"] for c in chunks}:
                 raise ValueError("Chroma verification failed: indexed IDs differ from the manifest.")
             sparse_ids = sparse.write_index(version.id, chunks, document.title, version.original_filename)

@@ -71,7 +71,7 @@ def _run(**changes):
         dataset_hash="dataset", split="dev", metric_revision=METRIC_REVISION))
 
 
-@pytest.mark.parametrize("changes", [dict(top_k=6), dict(provider="gemini"), dict(dimensions=4), dict(embedding_model="other")])
+@pytest.mark.parametrize("changes", [dict(top_k=6), dict(provider="legacy"), dict(dimensions=4), dict(embedding_model="other")])
 def test_comparison_rejects_incomparable_runs(changes):
     with pytest.raises(ValueError):
         compare_runs(_run(), _run(**changes))

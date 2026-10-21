@@ -111,13 +111,7 @@ flowchart LR
 
 ## 5. Embedding generation and chunk preparation
 
-`Gemini.fit_chunks()` [app/services/gemini.py](../app/services/gemini.py) функц нь chunk-ийг embedding-д бэлдэхэд ашиглагддаг. Энэ function нь:
-
-- chunk text-ийг UTF-8 byte guard-аар шалгана
-- 1,900 byte-ээс их бол split хийнэ
-- `assign_ids()`-ийг дахин ашиглан шинэ ID үүсгэх боломжийг олгоно
-
-Энэ нь embedding provider-ийн "exact token count" биш, харин консерватив `utf8-1900-v1` guard-ийг хэрэгжүүлдэг. Тодорхой тайлбар: `gemini-embedding-001` нь `count_tokens`-ийг дэмждэггүй учраас, text-ийг босго хэмжээ хүртэл нь хувааж, цааш хэт их input-ийг зөвшөөрөхгүй.
+`OpenAIProvider.fit_chunks()` [app/services/openai_provider.py](../app/services/openai_provider.py) функц нь `tiktoken`-оор input token count хийж, 7,900-token safety guard-оос хэтэрсэн chunk-ийг хуваадаг. Энэ нь аппын хамгаалалтын босго бөгөөд OpenAI API-ийн нийт дээд хязгаарыг илэрхийлэхгүй. Шинэ chunk-д `assign_ids()` ашиглан deterministic ID онооно.
 
 ## 6. ChromaDB storage and metadata
 

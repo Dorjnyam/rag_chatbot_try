@@ -6,8 +6,9 @@ from sqlalchemy import select
 from flask import current_app
 from ..extensions import db
 from ..models import Document, DocumentVersion
-from .providers import provider
+from .openai_provider import openai_client
 from .vectorstore import store
+from .embedding_contract import compatible_embedding_spaces
 from . import sparse
 
 
@@ -29,16 +30,14 @@ def still_active(hits):
 def embedding_mismatch(version, config=None):
     config = config or current_app.config
     stored = version.config
-    stored_provider = stored.get("provider", "gemini")
-    return (stored_provider, stored.get("embedding_model"), stored.get("dimensions")) != (
-        config.get("AI_PROVIDER", "gemini"), config["EMBEDDING_MODEL"], config["EMBEDDING_DIMENSIONS"])
+    return not compatible_embedding_spaces(stored, config)
 
 
 def incompatible_active_count():
     return sum(1 for version, _document in active_versions() if embedding_mismatch(version))
 
 
-def dense_search(queries, groups, top_k, client, return_rankings=False):
+def dense_search(queries, groups, top_k, client, return_rankings=False, embedding_configs=None):
     rankings = {}
     start = time.monotonic()
     vectors = client.embed(queries, "RETRIEVAL_QUERY")
@@ -46,7 +45,8 @@ def dense_search(queries, groups, top_k, client, return_rankings=False):
     for index, vector in enumerate(vectors):
         hits = []
         for collection, ids in groups.items():
-            hits.extend(store().query(collection, vector, ids, top_k))
+            hits.extend(store().query(collection, vector, ids, top_k,
+                (embedding_configs or {}).get(collection)))
         hits.sort(key=lambda hit: (hit["distance"], hit["id"]))
         rankings[f"dense_{index}"] = hits[:top_k]
     search_ms = (time.monotonic() - embedded) * 1000
@@ -89,16 +89,20 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
     config = current_app.config
     for version, document in rows:
         if embedding_mismatch(version):
-            raise ValueError("The active index uses a different embedding space. OpenAI/Gemini embedding тохиргоо зөрж байна; migrate-indexes командаар шилжүүлнэ үү.")
-    groups, versions, titles = {}, [], {}
+            raise ValueError("The active index uses a different embedding space. OpenAI embedding тохиргоотой таарахгүй байна; OpenAI индексийн migration хийнэ үү.")
+    groups, versions, titles, embedding_configs = {}, [], {}, {}
     for version, document in rows:
         groups.setdefault(version.collection_name, []).append(version.id)
+        existing_config = embedding_configs.setdefault(version.collection_name, version.config)
+        if not compatible_embedding_spaces(existing_config, version.config):
+            raise ValueError("A Chroma collection contains document versions from incompatible embedding spaces.")
         versions.append((version.id, document.title, version.original_filename, document.id))
         titles[version.id] = dict(title=document.title, version_number=version.version_number, filename=version.original_filename)
     db.session.commit()
-    client = client or provider()
+    client = client or openai_client()
     queries = list(dict.fromkeys((candidates or [question])[:3])) or [question]
-    dense, embedding_ms, dense_ms, dense_rankings = dense_search(queries, groups, config["DENSE_TOP_K"], client, return_rankings=True)
+    dense, embedding_ms, dense_ms, dense_rankings = dense_search(queries, groups, config["DENSE_TOP_K"], client,
+        return_rankings=True, embedding_configs=embedding_configs)
     sparse_start = time.monotonic()
     sparse_rankings, missing = {}, set()
     if config["RETRIEVAL_MODE"] == "hybrid":

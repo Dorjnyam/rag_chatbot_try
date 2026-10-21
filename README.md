@@ -1,7 +1,7 @@
 # Evidence Lab — a learning RAG chatbot
 
 A local Flask application exposing document extraction, chunking, semantic search,
-evidence selection, grounded OpenAI or Gemini answers, and evaluation. Mongolian Cyrillic and
+evidence selection, grounded OpenAI answers, and evaluation. Mongolian Cyrillic and
 English are first-class evaluation groups. Included evaluation fixtures are synthetic;
 approved company documents imported locally stay in the ignored `instance/` directory.
 
@@ -16,10 +16,8 @@ uv pip install --python .venv\Scripts\python.exe -r requirements.lock.txt
 Copy-Item .env.example .env
 ```
 
-Set `OPENAI_API_KEY` (the selected provider in the example) and a random
-`FLASK_SECRET_KEY` in `.env`. Leave the Gemini key empty unless switching to Gemini.
-Switch providers with `AI_PROVIDER=openai` or `AI_PROVIDER=gemini`; only the selected
-provider needs a key. Do not commit `.env`.
+Set `OPENAI_API_KEY` and a random `FLASK_SECRET_KEY` in `.env`. This application
+uses OpenAI only. Do not commit `.env`.
 If you leave the secret unset, a local random key is generated in `instance/session.key`.
 No API key is included or simulated in the application.
 
@@ -61,64 +59,60 @@ Open <http://127.0.0.1:5000>. `doctor --live` makes small API requests and can i
 charges. It verifies embedding, generation token counting, and generation access.
 The configured models are explicit, not moving aliases. If account/model access
 changes, update configuration and rebuild all active indexes when the embedding
-space changes. The embedding model does not support `count_tokens` (confirmed in
-[the SDK maintainer issue](https://github.com/googleapis/python-genai/issues/1541)).
-The baseline therefore splits embedding chunks at a conservative **1,900 UTF-8 byte
-safety cap**, recorded in the index fingerprint. This is not an exact token count
-or a claim about an undocumented tokenizer. Overlong questions are rejected with
-a shortening hint; text is never silently truncated. Generation uses its own
-OpenAI token budgeting uses local `tiktoken`; unknown generation model mappings use
+space changes. Embedding inputs use the configured model's `tiktoken` encoding and
+a **7,900-token safety guard**; oversized chunks are split without truncation.
+Generation token budgeting uses local `tiktoken`; unknown generation model mappings use
 the conservative `o200k_base` tokenizer. No remote token-count request is made.
 
-### Switching existing indexes from Gemini to OpenAI
+### Existing indexes from another embedding space
 
-Embedding spaces are provider-specific. Existing Gemini vectors cannot be queried
-with OpenAI embeddings, even when dimensions match. Migration builds new indexes
+Embedding vectors from a different model or contract cannot be queried with the
+configured OpenAI embedding, even when dimensions match. Migration builds new indexes
 from each active ready version’s stored Chroma chunks; it does not rerun OCR or
 approve review items. Preparation makes billable embedding calls, so first inspect
 the no-call estimate:
 
 ```powershell
-.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --target-provider openai --dry-run
-.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --target-provider openai --manifest provider-cutover
+.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --dry-run
+.venv\Scripts\python.exe -m flask --app app migrate-indexes prepare --manifest openai-cutover
 ```
 
 Preparation resumes with the same manifest and leaves current active indexes
-untouched. For cutover, set `AI_PROVIDER=openai`, restart Flask, then run:
+untouched. For cutover, run:
 
 ```powershell
-.venv\Scripts\python.exe -m flask --app app migrate-indexes activate --manifest provider-cutover
+.venv\Scripts\python.exe -m flask --app app migrate-indexes activate --manifest openai-cutover
 ```
 
-Activation changes all migrated active pointers in one transaction. Old vectors
-remain available. To restore the prior mapping, set `AI_PROVIDER=gemini`, restart,
-then run:
+Activation changes all migrated active pointers in one transaction. Previous
+versions remain stored; rollback is allowed only when the previous index also uses
+OpenAI. This app cannot reactivate a non-OpenAI index.
 
-```powershell
-.venv\Scripts\python.exe -m flask --app app migrate-indexes rollback --manifest provider-cutover
-```
-
-Manifests live under `instance/`. Run `doctor` to check provider, key presence, and
+Manifests live under `instance/`. Run `doctor` to check OpenAI key presence and
 index compatibility. Actual API access, migration cost, and Mongolian retrieval and
 answer quality remain pending until a key is supplied and reviewed evaluations run.
 
 ## The pipeline and ownership
+
+The `documentation/audit/` folder and `validation.json` preserve an earlier
+architecture snapshot. Their provider references describe that historical code
+state; the current runtime and dependencies use OpenAI only.
 
 ```mermaid
 flowchart LR
   Upload --> Parse[Native parsing / DOC conversion / OCR]
   Parse --> Review[Inspect extraction]
   Review --> Chunk[Character chunks]
-  Chunk --> Embed[Selected provider document embeddings]
+  Chunk --> Embed[OpenAI document embeddings]
   Embed --> Chroma[(Chroma)]
   Chroma --> Verify[Verify exact IDs]
   Verify --> PG[(PostgreSQL active version)]
-  Question --> QE[Selected provider query embedding]
+  Question --> QE[OpenAI query embedding]
   PG --> Retrieve[Filter active versions]
   QE --> Retrieve
   Chroma --> Retrieve
   Retrieve --> Context[Budgeted evidence context]
-  Context --> Answer[Selected provider answer + citation validation]
+  Context --> Answer[OpenAI answer + citation validation]
   Answer --> Trace[Query history / evaluation]
 ```
 
@@ -128,8 +122,8 @@ extractions, and chunk manifests. Full chunk text is not duplicated in query log
 History inspection reloads the indexed chunk; deleted sources are marked unavailable.
 
 `app/services/parsing.py` produces ordered blocks with provenance. `chunking.py`
-preserves PDF page and DOCX heading boundaries. `gemini.py` owns remote calls,
-retries, vector normalization and token counts. `ingestion.py` owns stage → verify
+preserves PDF page and DOCX heading boundaries. `openai_provider.py` owns OpenAI
+requests, retries, vector normalization and token counts. `ingestion.py` owns stage → verify
 → activate and recovery. `retrieval.py` is independent of generation. `rag.py`
 owns context selection and citation validation. Routes remain thin, with Jinja2 and
 plain JavaScript for the interface. `evaluation.py` contains readable metrics.
@@ -209,14 +203,14 @@ state. Metadata tombstones remain for historical query/evaluation records.
 
 | Setting | Default |
 |---|---|
-| Embedding / generation | `gemini-embedding-001` / `gemini-3.5-flash-lite` |
-| Vectors | 768 dimensions, L2 normalization, cosine distance |
+| Embedding / generation | `text-embedding-3-small` / `gpt-6-luna` |
+| Vectors | 1,536 dimensions, L2 normalization, cosine distance |
 | Embedding tasks | `RETRIEVAL_DOCUMENT` / `RETRIEVAL_QUERY` |
 | Chunks / overlap | 1,800 / 250 characters |
-| Embedding input guard | Split further at 1,900 UTF-8 bytes; not an exact token count |
+| Embedding input guard | Split further at 7,900 model tokens; not the provider's full API limit |
 | Retrieval | Dense + BM25 hybrid; 15 candidates per branch; RRF `k=60`; final top-k 5 |
 | Context | Up to 6 deduplicated evidence chunks within the 8,000-token context budget |
-| Optional optimization | Local cross-encoder and conditional selected-provider query rewrite; both disabled by default |
+| Optional optimization | Local cross-encoder and conditional OpenAI query rewrite; both disabled by default |
 | Corpus filters | Active versions; optional document and language |
 | Context / history / total input | 8,000 / 2,000 / 12,000 generation-model tokens |
 | History / output | Last four question-answer turns / up to 1,000 output tokens |
@@ -441,7 +435,7 @@ a parsing problem with a longer prompt or interpreting a smooth answer as eviden
 
 ## Acceptance boundaries
 
-Engineering checks, live Gemini checks, rendered browser checks, dataset review,
+Engineering checks, live OpenAI checks, rendered browser checks, dataset review,
 and human answer acceptance are separate. See `validation.json` for recorded checks.
 The user learning/explanation milestones require the learner's own demonstration.
 The application does not claim to satisfy those automatically.
@@ -456,10 +450,7 @@ checks help the local workflow but are not enterprise access control.
 - [Flask factories](https://flask.palletsprojects.com/en/stable/patterns/appfactories/)
 - [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/stable/quickstart/)
 - [Flask-Migrate](https://flask-migrate.readthedocs.io/en/latest/)
-- [Gemini SDK](https://github.com/googleapis/python-genai)
-- [Gemini embeddings](https://ai.google.dev/gemini-api/docs/embeddings)
-- [Gemini tokens](https://ai.google.dev/gemini-api/docs/tokens)
-- [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output)
+- [OpenAI API documentation](https://platform.openai.com/docs/)
 - [Chroma collection configuration](https://docs.trychroma.com/docs/collections/configure)
 - [pypdf extraction](https://pypdf.readthedocs.io/en/stable/user/extract-text.html)
 - [python-docx](https://python-docx.readthedocs.io/en/latest/api/document.html)

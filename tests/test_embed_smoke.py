@@ -41,7 +41,7 @@ def test_plan_validates_snapshot_and_does_not_need_provider_or_database(tmp_path
     from app import create_app
     app = create_app({"TESTING": True, "SECRET_KEY": "embed-smoke-test",
         "DATA_DIR": tmp_path / "app-data", "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
-    app.config.update(AI_PROVIDER="openai", OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
         OPENAI_EMBEDDING_DIMENSIONS=16, CHUNK_SIZE=1800, CHUNK_OVERLAP=250)
     data_dir = _smoke_fixture(tmp_path)
     with app.app_context():
@@ -61,7 +61,7 @@ def test_mock_pipeline_roundtrips_vectors_and_source_refs_in_isolated_chroma(tmp
     from app import create_app
     app = create_app({"TESTING": True, "SECRET_KEY": "embed-smoke-test",
         "DATA_DIR": tmp_path / "app-data", "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
-    app.config.update(AI_PROVIDER="openai", OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
         OPENAI_EMBEDDING_DIMENSIONS=16, CHUNK_SIZE=1800, CHUNK_OVERLAP=250)
     data_dir = _smoke_fixture(tmp_path)
     with app.app_context():

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .services.chunking import chunk as production_chunk
 from .services.ingestion import embedding_batches, index_config
+from .services.embedding_contract import collection_contract_metadata, validate_collection_metadata, validate_vectors
 
 
 def _canonical_hash(value):
@@ -65,9 +66,7 @@ def prepare_smoke(data_dir: Path, config: dict):
     if manifest.get("snapshot_id") != snapshot_id or manifest.get("dataset_sha256") != dataset.get("source_dataset_sha256"):
         raise ValueError("Ground-truth and frozen parser snapshot identity differ.")
     manifest_rows = {row["doc_id"]: row for row in manifest.get("records", [])}
-    if config.get("AI_PROVIDER") != "openai":
-        raise ValueError("This preparation currently targets the configured OpenAI embedding provider only.")
-    chunk_config = index_config("openai")
+    chunk_config = index_config()
     model, dimensions = chunk_config["embedding_model"], chunk_config["dimensions"]
     if not isinstance(dimensions, int) or dimensions <= 0:
         raise ValueError("Embedding dimensions are invalid.")
@@ -107,6 +106,7 @@ def prepare_smoke(data_dir: Path, config: dict):
                 source_dataset_sha256=snapshot_hash, embedding_provider="openai",
                 embedding_model=model, embedding_dimensions=dimensions,
                 benchmark_only=True, smoke_dataset_hash=expected_hash)
+            item["metadata"].update(collection_contract_metadata(chunk_config))
             if item["id"] in target_chunk_ids:
                 item["metadata"]["verified_annotation_candidate_id"] = record["candidate_id"]
                 item["metadata"]["verified_source_location_json"] = json.dumps(
@@ -120,9 +120,9 @@ def prepare_smoke(data_dir: Path, config: dict):
         for language, query in query_variants.items():
             if not isinstance(query, str) or not query.strip():
                 raise ValueError("An empty verified query variation was exported.")
-            if len(query.encode("utf8")) > 1900:
-                raise ValueError("A query exceeds the production OpenAI UTF-8 input guard.")
             token_count = len(encoding.encode(query))
+            if token_count > 7900:
+                raise ValueError("A query exceeds the production OpenAI 7,900-token input guard.")
             query_token_count += token_count
             query_inputs.append({"candidate_id": record["candidate_id"], "doc_id": doc_id,
                 "language": language, "text": query, "token_count": token_count,
@@ -163,6 +163,11 @@ def prepare_smoke(data_dir: Path, config: dict):
         "chunk_size": chunk_config["chunk_size"], "chunk_overlap": chunk_config["chunk_overlap"],
         "chunk_config_sha256": _canonical_hash(chunk_config),
         "provider": "openai", "model": model, "dimensions": dimensions,
+        "model_revision": chunk_config.get("embedding_model_revision"),
+        "embedding_contract_sha256": chunk_config["embedding_contract_sha256"],
+        "preprocessing_version": chunk_config["embedding_preprocessing_version"],
+        "normalization": chunk_config["normalization"],
+        "query_document_compatibility": chunk_config["query_document_compatibility"],
         "embedding_batch_size": config["EMBEDDING_BATCH_SIZE"], "embedding_batch_byte_budget": 16000,
         "tokenizer": encoding.name, "tiktoken_version": __import__("importlib.metadata", fromlist=["version"]).version("tiktoken"),
         "records": records,
@@ -175,7 +180,8 @@ def prepare_smoke(data_dir: Path, config: dict):
     plan = {"schema_version": 1, "plan_id": f"embed-smoke-{plan_hash[:12]}", "plan_sha256": plan_hash,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         **{key: plan_identity[key] for key in ("dataset_sha256", "snapshot_id", "source_dataset_sha256", "parser",
-           "strategy", "chunk_size", "chunk_overlap", "chunk_config_sha256", "provider", "model", "dimensions", "embedding_batch_size",
+           "strategy", "chunk_size", "chunk_overlap", "chunk_config_sha256", "provider", "model", "dimensions",
+           "model_revision", "embedding_contract_sha256", "preprocessing_version", "normalization", "query_document_compatibility", "embedding_batch_size",
            "embedding_batch_byte_budget", "tokenizer", "tiktoken_version")},
         "document_count": len(records), "approved_question_count": len(records),
         "verified_query_variation_count": len(query_inputs), "document_chunk_count": sum(len(v) for v in chunks_by_doc.values()),
@@ -220,9 +226,22 @@ def run_isolated_smoke(plan, chunks_by_doc, query_inputs, data_dir: Path, embedd
     chroma_dir = run_dir / "chroma"
     chroma_dir.mkdir(parents=True, exist_ok=True)
     client = chromadb.PersistentClient(path=str(chroma_dir), settings=chromadb.config.Settings(anonymized_telemetry=False))
+    contract_metadata = collection_contract_metadata({
+        "provider": plan["provider"], "embedding_model": plan["model"],
+        "embedding_model_revision": plan.get("model_revision"), "dimensions": plan["dimensions"],
+        "embedding_preprocessing_version": plan["preprocessing_version"],
+        "normalization": plan["normalization"],
+        "query_document_compatibility": plan["query_document_compatibility"],
+    })
     collection = client.get_or_create_collection(name="isolated_smoke", embedding_function=None,
-        metadata={"hnsw:space": "cosine", "benchmark_only": True,
-            "embedding_model": plan["model"], "embedding_dimensions": plan["dimensions"]})
+        metadata={"hnsw:space": "cosine", "benchmark_only": True, **contract_metadata})
+    validate_collection_metadata(collection.metadata, {
+        "provider": plan["provider"], "embedding_model": plan["model"],
+        "embedding_model_revision": plan.get("model_revision"), "dimensions": plan["dimensions"],
+        "embedding_preprocessing_version": plan["preprocessing_version"],
+        "normalization": plan["normalization"],
+        "query_document_compatibility": plan["query_document_compatibility"],
+    })
     dimensions = plan["dimensions"]
     stored_ids, evidence_roundtrips = set(), []
     all_chunks = [item for doc_chunks in chunks_by_doc.values() for item in doc_chunks]
@@ -233,8 +252,9 @@ def run_isolated_smoke(plan, chunks_by_doc, query_inputs, data_dir: Path, embedd
     doc_vectors = []
     for batch in embedding_batches(all_chunks, batch_size):
         doc_vectors.extend(embedder([item["text"] for item in batch], "RETRIEVAL_DOCUMENT"))
-    if len(doc_vectors) != len(all_chunks) or any(len(vector) != dimensions for vector in doc_vectors):
+    if len(doc_vectors) != len(all_chunks):
         raise ValueError("Document embedding response count/dimensions do not match the experiment manifest.")
+    validate_vectors(doc_vectors, dimensions, plan["normalization"])
     collection.upsert(ids=[item["id"] for item in all_chunks], documents=[item["text"] for item in all_chunks],
         metadatas=[item["metadata"] for item in all_chunks], embeddings=doc_vectors)
     saved = collection.get(ids=list(stored_ids), include=["metadatas"])
@@ -254,8 +274,9 @@ def run_isolated_smoke(plan, chunks_by_doc, query_inputs, data_dir: Path, embedd
     query_chunk_batches = list(embedding_batches([{"text": item["text"]} for item in query_inputs], batch_size))
     for batch in query_chunk_batches:
         query_vectors.extend(embedder([item["text"] for item in batch], "RETRIEVAL_QUERY"))
-    if len(query_vectors) != len(query_inputs) or any(len(vector) != dimensions for vector in query_vectors):
+    if len(query_vectors) != len(query_inputs):
         raise ValueError("Query embedding response count/dimensions do not match verified query variations.")
+    validate_vectors(query_vectors, dimensions, plan["normalization"])
     vector_by_chunk = dict(zip([item["id"] for item in all_chunks], doc_vectors))
     retrieval_references = []
     by_id = {item["id"]: item for item in all_chunks}
@@ -290,6 +311,7 @@ def run_isolated_smoke(plan, chunks_by_doc, query_inputs, data_dir: Path, embedd
     return {"plan_id": plan["plan_id"], "run_id": run_id, "isolated_chroma_path": str(chroma_dir),
         "collection_name": collection.name, "indexed_chunk_count": len(stored_ids),
         "embedding_dimensions": dimensions, "stored_ids_match_manifest": True,
+        "embedding_contract_sha256": plan["embedding_contract_sha256"],
         "source_reference_roundtrips": evidence_roundtrips,
         "mock_or_oracle_vector_roundtrips": oracle_roundtrips,
         "query_retrieval_smoke_diagnostics": retrieval_references,

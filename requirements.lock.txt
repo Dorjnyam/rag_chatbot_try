@@ -18,7 +18,6 @@ annotated-types==0.8.0
     # via pydantic
 anyio==4.15.1
     # via
-    #   google-genai
     #   httpx
     #   httpx2
     #   openai
@@ -40,8 +39,6 @@ certifi==2026.7.22
     #   httpx
     #   kubernetes
     #   requests
-cffi==2.1.1
-    # via cryptography
 charset-normalizer==3.5.2
     # via requests
 chromadb==1.5.9
@@ -57,12 +54,8 @@ colorama==0.4.6
     #   pytest
     #   tqdm
     #   typer
-cryptography==50.0.2
-    # via google-auth
 distro==1.9.0
-    # via
-    #   google-genai
-    #   openai
+    # via openai
 durationpy==0.11
     # via kubernetes
 filelock==4.2.2
@@ -86,10 +79,6 @@ frozenlist==1.8.0
     #   aiosignal
 fsspec==2026.9.0
     # via huggingface-hub
-google-auth==2.62.0
-    # via google-genai
-google-genai==2.31.0
-    # via -r requirements.txt
 googleapis-common-protos==1.75.5
     # via opentelemetry-exporter-otlp-proto-grpc
 grpcio==1.84.0
@@ -112,7 +101,6 @@ httptools==0.9.0
 httpx==0.28.1
     # via
     #   chromadb
-    #   google-genai
     #   openai
 httpx2==2.13.1
     # via huggingface-hub
@@ -224,18 +212,11 @@ psycopg==3.3.6
     # via -r requirements.txt
 psycopg-binary==3.3.6
     # via psycopg
-pyasn1==0.6.4
-    # via pyasn1-modules
-pyasn1-modules==0.4.2
-    # via google-auth
 pybase64==1.5.1
     # via chromadb
-pycparser==3.11
-    # via cffi
 pydantic==2.14.1
     # via
     #   chromadb
-    #   google-genai
     #   kubernetes
     #   openai
     #   pydantic-settings
@@ -282,8 +263,6 @@ regex==2026.9.29
     # via tiktoken
 requests==2.34.2
     # via
-    #   google-auth
-    #   google-genai
     #   kubernetes
     #   requests-oauthlib
     #   tiktoken
@@ -302,18 +281,14 @@ shellingham==1.5.4
 six==1.17.0
     # via python-dateutil
 sniffio==1.3.1
-    # via
-    #   google-genai
-    #   openai
+    # via openai
 sqlalchemy==2.1.5
     # via
     #   -r requirements.txt
     #   alembic
     #   flask-sqlalchemy
 tenacity==9.1.4
-    # via
-    #   chromadb
-    #   google-genai
+    # via chromadb
 tiktoken==0.12.0
     # via -r requirements.txt
 tokenizers==0.23.3
@@ -336,7 +311,6 @@ typing-extensions==4.16.0
     #   alembic
     #   anyio
     #   chromadb
-    #   google-genai
     #   grpcio
     #   httpx2
     #   huggingface-hub
@@ -371,9 +345,7 @@ watchfiles==1.3.0
 websocket-client==1.9.2
     # via kubernetes
 websockets==16.1.1
-    # via
-    #   google-genai
-    #   uvicorn
+    # via uvicorn
 werkzeug==3.1.9
     # via flask
 yarl==1.25.1

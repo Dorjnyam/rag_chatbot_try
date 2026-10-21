@@ -1,4 +1,4 @@
-"""Prepare, atomically activate, or roll back provider-specific document indexes."""
+"""Prepare, atomically activate, or roll back OpenAI document indexes."""
 import time
 from datetime import datetime, timezone
 from flask import current_app
@@ -7,7 +7,8 @@ from ..extensions import db
 from ..models import Document, DocumentVersion, uid
 from .storage import fingerprint, mutation_lock, path, read_json, write_json
 from .ingestion import index_config
-from .providers import provider
+from .embedding_contract import collection_contract_metadata, compatible_embedding_spaces
+from .openai_provider import openai_client
 from .vectorstore import store
 from . import sparse
 
@@ -27,18 +28,14 @@ def _active_pairs():
 
 def _uses_embedding_config(version, config):
     stored = version.config
-    return (stored.get("provider", "gemini"), stored.get("embedding_model"), stored.get("dimensions")) == (
-        config["provider"], config["embedding_model"], config["dimensions"])
+    return compatible_embedding_spaces(stored, config)
 
 
-def prepare(target_provider, manifest_name, dry_run=False):
-    target_provider = target_provider.casefold()
-    if target_provider not in ("openai", "gemini"):
-        raise ValueError("Target provider must be openai or gemini.")
+def prepare(manifest_name, dry_run=False):
     manifest_name = _manifest_path(manifest_name) if manifest_name else None
     if not dry_run and not manifest_name:
         raise ValueError("Provide --manifest for resumable preparation.")
-    config = index_config(target_provider)
+    config = index_config()
     rows = _active_pairs()
     store_ = store()
     eligible, excluded, chunks_total, estimated_tokens = [], [], 0, 0
@@ -60,7 +57,7 @@ def prepare(target_provider, manifest_name, dry_run=False):
         estimated_tokens += sum(max(1, len(t.encode("utf8")) // 3) for t in texts)
         chunks_total += len(texts)
         eligible.append({"document_id": doc.id, "title": doc.title, "source_version_id": source.id, "chunks": len(texts)})
-    summary = {"target_provider": target_provider, "target_model": config["embedding_model"], "dimensions": config["dimensions"],
+    summary = {"target_provider": "openai", "target_model": config["embedding_model"], "dimensions": config["dimensions"],
         "eligible_documents": len(eligible), "eligible_chunks": chunks_total, "estimated_input_tokens": estimated_tokens,
         "already_compatible_documents": already_compatible,
         "estimate_method": "UTF-8 bytes / 3 (rough local estimate; no API call)", "excluded": excluded, "dry_run": dry_run}
@@ -71,16 +68,16 @@ def prepare(target_provider, manifest_name, dry_run=False):
             manifest = read_json(manifest_name)
             if manifest.get("status") in ("activated", "rolled_back"):
                 raise ValueError("This migration has already been activated or rolled back; use a new manifest for another cutover.")
-            if manifest.get("target_provider") != target_provider or manifest.get("target_config") != config:
-                raise ValueError("Existing manifest uses a different target provider or index configuration.")
+            if manifest.get("target_provider") != "openai" or manifest.get("target_config") != config:
+                raise ValueError("Existing manifest uses a different target embedding configuration.")
             entries = {entry["document_id"]: entry for entry in manifest["entries"]}
         else:
-            manifest = {"schema": 1, "target_provider": target_provider, "target_config": config,
+            manifest = {"schema": 1, "target_provider": "openai", "target_config": config,
                 "created_at": time.time(), "status": "preparing", "entries": []}
             entries = {}
         client = None
         try:
-            client = provider(target_provider, time.monotonic() + 900)
+            client = openai_client(time.monotonic() + 900)
             for doc, source in rows:
                 if _uses_embedding_config(source, config):
                     if doc.id in entries:
@@ -108,7 +105,7 @@ def prepare(target_provider, manifest_name, dry_run=False):
                         db.session.commit()
                     entry = {"document_id": doc.id, "source_version_id": source.id, "target_version_id": target.id,
                         "source_config_hash": source.config_hash,
-                        "source_provider": source.config.get("provider", "gemini"),
+                        "source_provider": source.config.get("provider", "unknown"),
                         "status": "pending", "chunks": source.expected_chunks}
                     manifest["entries"].append(entry)
                     entries[doc.id] = entry
@@ -127,7 +124,8 @@ def prepare(target_provider, manifest_name, dry_run=False):
                     raise ValueError(f"Source chunks changed for {doc.id}.")
                 chunks = client.fit_chunks(chunks, config["embedding_model"], target.id, target.config)
                 for item in chunks:
-                    item["metadata"].update(document_id=doc.id, version_id=target.id, language=doc.language, config_hash=target.config_hash)
+                    item["metadata"].update(document_id=doc.id, version_id=target.id, language=doc.language,
+                        config_hash=target.config_hash, **collection_contract_metadata(target.config))
                 target.expected_chunks, target.manifest_path = len(chunks), f"manifests/{target.id}.json"
                 write_json(target.manifest_path, [{"id": c["id"], "metadata": c["metadata"]} for c in chunks])
                 db.session.commit()
@@ -136,7 +134,7 @@ def prepare(target_provider, manifest_name, dry_run=False):
                 from .ingestion import embedding_batches
                 for batch in embedding_batches(chunks, current_app.config["EMBEDDING_BATCH_SIZE"]):
                     vectors = client.embed([c["text"] for c in batch], "RETRIEVAL_DOCUMENT", config["embedding_model"], config["dimensions"])
-                    store_.upsert(target.collection_name, batch, vectors)
+                    store_.upsert(target.collection_name, batch, vectors, target.config)
                 dense_ids = store_.ids(target.collection_name, target.id)
                 sparse_ids = sparse.write_index(target.id, chunks, doc.title, target.original_filename)
                 expected = {c["id"] for c in chunks}
@@ -169,8 +167,8 @@ def _read_ready_manifest(manifest_name):
 def activate(manifest_name):
     with mutation_lock():
         name, manifest = _read_ready_manifest(manifest_name)
-        if current_app.config.get("AI_PROVIDER") != manifest["target_provider"]:
-            raise ValueError(f"Set AI_PROVIDER={manifest['target_provider']} and restart Flask before activation.")
+        if manifest.get("target_provider") != "openai":
+            raise ValueError("Only OpenAI embedding indexes can be activated by this application.")
         for item in manifest["entries"]:
             doc = db.session.get(Document, item["document_id"])
             source, target = db.session.get(DocumentVersion, item["source_version_id"]), db.session.get(DocumentVersion, item["target_version_id"])
@@ -214,9 +212,9 @@ def rollback(manifest_name):
         manifest = read_json(name)
         if manifest.get("status") not in ("activated", "rolling_back", "rolled_back"):
             raise ValueError("Manifest is not activated.")
-        providers = {item.get("source_provider", "gemini") for item in manifest["entries"]}
-        if len(providers) != 1 or current_app.config.get("AI_PROVIDER") not in providers:
-            raise ValueError("Restore the previous AI_PROVIDER and restart Flask before rollback.")
+        providers = {item.get("source_provider", "unknown") for item in manifest["entries"]}
+        if providers != {"openai"}:
+            raise ValueError("Rollback to a non-OpenAI embedding index is disabled.")
         for item in manifest["entries"]:
             doc = db.session.get(Document, item["document_id"])
             if not doc or doc.active_version_id not in (item["target_version_id"], item["source_version_id"]):

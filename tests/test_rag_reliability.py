@@ -4,7 +4,7 @@ import pytest
 from flask import Flask
 from app.services import rag
 from app.models import uid
-from conftest import FakeGemini
+from conftest import FakeOpenAI
 
 
 class Answers:
@@ -113,10 +113,10 @@ def test_context_can_cite_extra_hit_without_changing_final_k(app, ready, client)
     process(version.id)
     approve(version.id)
     process(version.id)
-    class CiteSecond(FakeGemini):
+    class CiteSecond(FakeOpenAI):
         def generate(self, *args):
             return answer('Журмын дагуу таван ажлын өдөр байна. [S2]', ['S2'])
-    app.config['GEMINI_FACTORY'] = CiteSecond
+    app.config['OPENAI_FACTORY'] = CiteSecond
     response = client.post('/chat/messages', headers={'X-CSRF-Token':csrf(client)}, json={'question':'leave', 'top_k':1})
     assert response.status_code == 200, response.json
     assert len(response.json['trace']) == 1
@@ -128,13 +128,13 @@ def test_context_can_cite_extra_hit_without_changing_final_k(app, ready, client)
 
 
 def test_rewrite_failure_preserves_original_and_closes_client(app, ready):
-    class RewriteFailure(FakeGemini):
+    class RewriteFailure(FakeOpenAI):
         closed = 0
         def rewrite_query(self, question):
             raise ValueError('quota')
         def close(self):
             RewriteFailure.closed += 1
-    app.config.update(QUERY_REWRITING_ENABLED=True, GEMINI_FACTORY=RewriteFailure)
+    app.config.update(QUERY_REWRITING_ENABLED=True, OPENAI_FACTORY=RewriteFailure)
     log, hits = rag.ask('unrecognized', uid())
     assert log.status == 'answered' and hits
     assert log.config['rewrite_outcome'] == 'provider_fallback'
@@ -144,10 +144,10 @@ def test_rewrite_failure_preserves_original_and_closes_client(app, ready):
 
 def test_provider_quota_has_safe_mongolian_error_in_chat_and_detail(app, ready, client):
     from conftest import csrf
-    class Quota(FakeGemini):
+    class Quota(FakeOpenAI):
         def generate(self, *args):
             raise ValueError('OpenAI API quota or billing limit reached. SECRET_PAYLOAD')
-    app.config['GEMINI_FACTORY'] = Quota
+    app.config['OPENAI_FACTORY'] = Quota
     response = client.post('/chat/messages', headers={'X-CSRF-Token':csrf(client)}, json={'question':'leave'})
     assert response.status_code == 502
     assert 'квот' in response.json['error']
@@ -180,7 +180,7 @@ def test_client_closed_when_final_log_commit_fails(monkeypatch):
     monkeypatch.setattr(rag, 'db', SimpleNamespace(session=Session()))
     import app.services.retrieval as retrieval
     monkeypatch.setattr(retrieval, 'active_versions', lambda *args: [1])
-    monkeypatch.setattr(rag, 'provider', lambda **kwargs: client)
+    monkeypatch.setattr(rag, 'openai_client', lambda **kwargs: client)
     monkeypatch.setattr(rag, 'retrieve', lambda *args, **kwargs: ([], {'candidate_pool':[]}))
     monkeypatch.setattr(rag, 'still_active', lambda *args: True)
     with app.app_context(), pytest.raises(RuntimeError, match='persistence'):

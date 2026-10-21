@@ -12,8 +12,8 @@ flowchart LR
   Ingest[services/ingestion.py] --> Chroma
   Ingest --> BM25
   Ingest --> PG[(PostgreSQL state and manifest)]
-  Ret --> Gemini[services/gemini.py]
-  Gemini --> RAG
+  Ret --> OpenAI[services/openai_provider.py]
+  OpenAI --> RAG
   RAG --> Logs[(query logs and citations)]
 ```
 Factory нь `app/__init__.py:create_app`; route нь `app/routes/chat.py:message`; гол оркестрац нь `app/services/rag.py:ask`.
@@ -23,7 +23,7 @@ flowchart TD
   Upload --> Extract[parse_bounded]
   Extract --> Review[approve]
   Review --> Chunks[chunking]
-  Chunks --> Embeddings[Gemini embeddings]
+  Chunks --> Embeddings[OpenAI embeddings]
   Embeddings --> Stage[Chroma upsert]
   Stage --> DenseCheck[manifest ID verification]
   DenseCheck --> Sparse[build_index]
@@ -98,7 +98,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
   participant R as rag.ask
-  participant P as Gemini provider
+  participant P as OpenAI provider
   participant M as Model
   R->>P: original question + evidence + Mongolian Cyrillic policy
   P->>M: structured generation
@@ -106,7 +106,7 @@ sequenceDiagram
   P-->>R: answer JSON
   R->>R: validate_answer citations and output language
 ```
-Код: `app/services/rag.py:SYSTEM`, `validate_answer`; `app/services/gemini.py:generate`.
+Код: `app/services/rag.py:SYSTEM`, `validate_answer`; `app/services/openai_provider.py:generate`.
 
 ```mermaid
 flowchart TD
@@ -127,7 +127,7 @@ sequenceDiagram
   participant F as Flask route
   participant A as rag.ask
   participant R as retrieve
-  participant G as Gemini
+  participant G as OpenAI
   participant DB as PostgreSQL
   U->>F: question
   F->>A: validated request
@@ -191,13 +191,13 @@ flowchart LR
   ask --> candidates["language.query_candidates"]
   ask --> versions["retrieval.active_versions"]
   ask --> retrieve["retrieval.retrieve"]
-  retrieve --> dense["dense_search then gemini.embed then Chroma.query"]
+  retrieve --> dense["dense_search then OpenAIProvider.embed then Chroma.query"]
   retrieve --> sparse["sparse.search then load_index"]
   dense --> rrf["sparse.rrf"]
   sparse --> rrf
   rrf --> rerank["optional _reranker"]
   ask --> context["rag.build_context"]
-  context --> generate["gemini.generate"]
+  context --> generate["OpenAIProvider.generate"]
   generate --> validate["rag.validate_answer"]
   validate --> log["QueryLog commit"]
 ```

@@ -13,7 +13,7 @@ flowchart LR
     A --> B["ask()"]
     B --> C["active_versions()"]
     C --> D["retrieve()"]
-    D --> E["Gemini embed\nRETRIEVAL_QUERY"]
+    D --> E["OpenAI embed\nRETRIEVAL_QUERY"]
     E --> F["Chroma query"]
     F --> G["Top-k hits"]
     G --> H["similarity = 1 - distance"]
@@ -37,7 +37,7 @@ flowchart LR
 - `active_versions(document_ids, language)`-ээр идэвхтэй баримтуудыг олно
 - `retrieve()`-ийг дууцгаана
 - `retrieval_only` үед generation-гүйгээр зогсох боломжтой
-- answer generation үед `build_context()` болон `Gemini.generate()`-ийг дууцгаана
+- answer generation үед `build_context()` болон `OpenAIProvider.generate()`-ийг дууцгаана
 
 ## 4. Active version filtering
 
@@ -63,10 +63,10 @@ statement = statement.where(Document.state == "active", DocumentVersion.state ==
 
 Retrieve pipeline дэх `client.embed([question], "RETRIEVAL_QUERY")`-ийг [app/services/retrieval.py](../app/services/retrieval.py) дотор гүйцэтгэдэг.
 
-- `Gemini` SDK-ийн `embed_content` API-г ашиглана
+- OpenAI SDK-ийн `embeddings.create` endpoint ашиглана
 - query model нь `RETRIEVAL_QUERY` task type-ээр ажиллана
 - vector нь `EMBEDDING_DIMENSIONS`-ийн дагуу normalized байна
-- `Gemini.normalize_vector()` логик нь L2 normalization хийж, norm 0-өөс зайлсхийдэг
+- `app/services/vectors.py::normalize_vector()` нь L2 normalization хийж, хүчингүй болон zero vector-ийг reject хийнэ
 
 ## 6. Vector similarity and distance metric
 
@@ -145,7 +145,7 @@ sequenceDiagram
     participant Rag
     participant Retrieval
     participant PG as PostgreSQL
-    participant Gemini as Gemini API
+    participant OpenAI as OpenAI API
     participant Chroma as ChromaDB
 
     Client->>Route: POST /chat/messages {question, top_k, filters}
@@ -153,8 +153,8 @@ sequenceDiagram
     Rag->>PG: active_versions(document_ids, language)
     PG-->>Rag: ready active versions
     Rag->>Retrieval: retrieve(question, k, document_ids, language, client)
-    Retrieval->>Gemini: embed([question], "RETRIEVAL_QUERY")
-    Gemini-->>Retrieval: normalized query vector
+    Retrieval->>OpenAI: embed([question], "RETRIEVAL_QUERY")
+    OpenAI-->>Retrieval: normalized query vector
     Retrieval->>Chroma: query(collection, vector, version_ids, k)
     Chroma-->>Retrieval: documents + metadatas + distances
     Retrieval-->>Rag: ordered hits with similarity

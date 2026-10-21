@@ -10,7 +10,7 @@ from app.services import ingestion
 from app.services.storage import path, read_json, mutation_lock
 from app.services.vectorstore import store
 from app.services.rag import ask
-from conftest import docx_file, csrf, FakeGemini
+from conftest import docx_file, csrf, FakeOpenAI
 
 pytestmark = pytest.mark.integration
 
@@ -37,25 +37,20 @@ def test_lifecycle_review_idempotence_and_persistent_chroma(app):
 
 def test_openai_migration_stages_then_activates_and_rolls_back(app, ready, tmp_path):
     from app.services.index_migration import prepare, activate, rollback
-    from conftest import FakeGemini
-
-    class FakeOpenAI(FakeGemini):
-        pass
 
     app.config.update(OPENAI_FACTORY=FakeOpenAI, OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
         OPENAI_EMBEDDING_DIMENSIONS=128)
     manifest = "migration-test"
-    dry = prepare("openai", None, dry_run=True)
+    dry = prepare(None, dry_run=True)
     assert dry["eligible_documents"] == 1 and dry["eligible_chunks"] > 0
-    report = prepare("openai", manifest)
+    report = prepare(manifest)
     assert report["status"] == "ready"
     document = db.session.get(Document, ready.document_id)
     previous = document.active_version_id
     assert previous == ready.id
-    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", EMBEDDING_DIMENSIONS=128)
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=128)
     assert activate(manifest)["status"] == "activated"
     assert document.active_version_id != previous
-    app.config.update(AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", EMBEDDING_DIMENSIONS=128)
     assert rollback(manifest)["status"] == "rolled_back"
     assert document.active_version_id == previous
 
@@ -64,35 +59,27 @@ def test_openai_migration_dry_run_only_selects_incompatible_indexes(app, ready):
     from app.services.ingestion import upload, process, approve
     from app.services.index_migration import prepare
 
-    class FakeOpenAI(FakeGemini):
-        pass
-
-    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small",
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
         GENERATION_MODEL="gpt-6-luna", EMBEDDING_DIMENSIONS=1536, OPENAI_FACTORY=FakeOpenAI)
     openai_version, _ = upload(docx_file("This document already uses OpenAI embeddings."), "OpenAI policy", "en")
     process(openai_version.id)
     approve(openai_version.id)
     process(openai_version.id)
 
-    result = prepare("openai", None, dry_run=True)
+    result = prepare(None, dry_run=True)
     assert result["eligible_documents"] == 1
     assert result["already_compatible_documents"] == 1
     assert result["eligible_chunks"] == ready.expected_chunks
 
 
-def test_pending_gemini_review_build_uses_selected_openai_embedding_config(app):
+def test_pending_review_build_uses_fixed_openai_embedding_config(app):
     from app.services.ingestion import upload, approve, process
 
-    class FakeOpenAI(FakeGemini):
-        pass
-
-    app.config.update(AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite")
-    version, _ = upload(docx_file("Policy text reviewed before provider switch."), "Provider handoff", "en")
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=128)
+    version, _ = upload(docx_file("Policy text reviewed before indexing."), "Policy build", "en")
     assert process(version.id, require_review=True).state == "review"
     approve(version.id)
-    assert version.config.get("provider", "gemini") == "gemini"
-    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small",
-        GENERATION_MODEL="gpt-6-luna", EMBEDDING_DIMENSIONS=128, OPENAI_FACTORY=FakeOpenAI)
+    app.config.update(GENERATION_MODEL="gpt-6-luna", OPENAI_FACTORY=FakeOpenAI)
     ready_version = process(version.id)
     assert ready_version.state == "ready"
     assert ready_version.config["provider"] == "openai"
@@ -176,7 +163,7 @@ def test_database_rejects_another_documents_active_version(app, ready):
 
 
 def test_grounded_chat_trace_and_no_duplicate_content(app, ready):
-    class TransactionChecking(FakeGemini):
+    class TransactionChecking(FakeOpenAI):
         def fit_chunks(self, *args):
             assert not db.session().in_transaction(), "DB transaction open during embedding preparation"
             return super().fit_chunks(*args)
@@ -189,7 +176,7 @@ def test_grounded_chat_trace_and_no_duplicate_content(app, ready):
         def generate(self, *args):
             assert not db.session().in_transaction(), "DB transaction open during generation"
             return super().generate(*args)
-    app.config["GEMINI_FACTORY"] = TransactionChecking
+    app.config["OPENAI_FACTORY"] = TransactionChecking
     rebuilt = ingestion.reindex(ready.document_id)
     ingestion.process(rebuilt.id)
     ingestion.approve(rebuilt.id)
@@ -203,12 +190,12 @@ def test_grounded_chat_trace_and_no_duplicate_content(app, ready):
 
 
 def test_bad_citation_retries_once_and_abstains_safely(app, ready):
-    class Invalid(FakeGemini):
+    class Invalid(FakeOpenAI):
         calls = 0
         def generate(self, prompt, system):
             Invalid.calls += 1
             return json.dumps(dict(status="answered", answer="Unsupported [S99]", sources=["S99"]))
-    app.config["GEMINI_FACTORY"] = Invalid
+    app.config["OPENAI_FACTORY"] = Invalid
     log, _ = ask("leave", uid())
     assert log.status == "insufficient_evidence" and Invalid.calls == 2
     assert not log.citations and not log.error
@@ -222,8 +209,8 @@ def test_changed_embedding_space_fails_explicitly(app, ready):
 
 
 def test_empty_corpus_no_api_key(app):
-    app.config.pop("GEMINI_FACTORY")
-    app.config["GEMINI_API_KEY"] = ""
+    app.config.pop("OPENAI_FACTORY")
+    app.config["OPENAI_API_KEY"] = ""
     log, hits = ask("Чөлөөний журам?", uid())
     assert log.status == "insufficient_evidence" and not hits
 
@@ -294,11 +281,11 @@ def test_ui_csrf_history_escaping_and_session_isolation(app, client, ready):
 
 
 def test_chat_explains_incompatible_active_embedding_indexes(app, client, ready):
-    app.config.update(AI_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", EMBEDDING_DIMENSIONS=1536)
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=1536)
     response = client.post("/chat/messages", headers={"X-CSRF-Token":csrf(client)}, json={"question":"leave"})
     assert response.status_code == 502
     assert "1 идэвхтэй индекс" in response.json["error"]
-    assert "migrate-indexes prepare --target-provider openai --dry-run" in response.json["error"]
+    assert "migrate-indexes prepare --dry-run" in response.json["error"]
 
 
 def test_cross_process_style_mutation_lock(app):
@@ -375,5 +362,5 @@ def test_full_bilingual_dataset_engineering_smoke(app, monkeypatch, tmp_path):
     assert multilingual.metrics["input:mn_latn"]["normalization_exact_match"]["mean"] == 1
     output = tmp_path / "test-results"
     output.mkdir(exist_ok=True)
-    (output / "mock-evaluation.json").write_text(json.dumps(dict(provider="FakeGemini TEST DOUBLE", human_review=False,
-        disclaimer="Engineering smoke only. Not evidence of bilingual Gemini quality.", runs=records), indent=2), encoding="utf8")
+    (output / "mock-evaluation.json").write_text(json.dumps(dict(provider="FakeOpenAI TEST DOUBLE", human_review=False,
+        disclaimer="Engineering smoke only. Not evidence of bilingual OpenAI quality.", runs=records), indent=2), encoding="utf8")

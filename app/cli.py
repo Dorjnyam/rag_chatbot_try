@@ -53,6 +53,11 @@ def register(app):
                 result.update(mode="local_mock" if local_mock else "paid_openai",
                     actual_embedding_usage=(client.usage.get("embedding", {}) if client else {"api_calls": 0}),
                     api_attempts=(client.attempts if client else 0),
+                    successful_embedding_operations=(len(client.embedding_request_latency_ms) if client else 0),
+                    embedding_operation_latency_ms=(client.embedding_request_latency_ms if client else []),
+                    provider_attempt_latency_ms=(client.provider_attempt_latency_ms if client else []),
+                    embedding_model_response_ids=(sorted(client.embedding_response_models) if client else []),
+                    embedding_model_revision=(client.embedding_model_revision if client else None),
                     result_recorded_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(timespec="seconds"))
                 result_path = Path(result["isolated_chroma_path"]).parent / "result.json"
                 temporary = result_path.with_suffix(".json.tmp")
@@ -66,6 +71,32 @@ def register(app):
                     client.close()
         except Exception as exc:
             raise click.ClickException(f"Embedding smoke preparation/run failed: {type(exc).__name__}: {exc}") from exc
+
+    @benchmark_embed.command("tokenization")
+    def benchmark_embed_tokenization():
+        """Measure the configured tokenizer over frozen A0 chunks; no provider or Chroma access."""
+        from .embedding_benchmark import run_tokenization_benchmark
+        try:
+            result = run_tokenization_benchmark(Path(current_app.config["DATA_DIR"]), current_app.config)
+        except Exception as exc:
+            raise click.ClickException(f"Tokenization benchmark failed: {type(exc).__name__}: {exc}") from exc
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+
+    @benchmark_embed.command("offline-pipeline")
+    @click.option("--batch-sizes", default="8,16,32", show_default=True,
+        help="Comma-separated local-mock batch sizes for isolated Chroma measurements.")
+    def benchmark_embed_offline_pipeline(batch_sizes):
+        """Measure mock batching and isolated Chroma persistence; no embedding API calls."""
+        from .embedding_benchmark import run_offline_pipeline_benchmark
+        try:
+            parsed_sizes = tuple(int(value.strip()) for value in batch_sizes.split(",") if value.strip())
+            if not parsed_sizes:
+                raise ValueError("Provide at least one batch size.")
+            result = run_offline_pipeline_benchmark(Path(current_app.config["DATA_DIR"]),
+                current_app.config, parsed_sizes)
+        except Exception as exc:
+            raise click.ClickException(f"Offline Embed pipeline benchmark failed: {type(exc).__name__}: {exc}") from exc
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
     @app.cli.group("benchmark-split")
     def benchmark_split():
@@ -177,16 +208,15 @@ def register(app):
 
     @app.cli.group("migrate-indexes")
     def migrate_indexes():
-        """Move active documents between embedding providers without deleting old indexes."""
+        """Re-embed active document versions into the configured OpenAI embedding space."""
 
     @migrate_indexes.command("prepare")
-    @click.option("--target-provider", type=click.Choice(["openai", "gemini"], case_sensitive=False), required=True)
     @click.option("--manifest", type=str, help="Resumable JSON manifest path under the application data directory.")
     @click.option("--dry-run", is_flag=True, help="Report eligibility and rough token estimate without API calls or changes.")
-    def migrate_prepare(target_provider, manifest, dry_run):
+    def migrate_prepare(manifest, dry_run):
         from .services.index_migration import prepare
         try:
-            result = prepare(target_provider, manifest, dry_run)
+            result = prepare(manifest, dry_run)
         except Exception as exc:
             raise click.ClickException(str(exc)) from exc
         click.echo(json.dumps(result, ensure_ascii=False, indent=2))
@@ -210,7 +240,7 @@ def register(app):
             raise click.ClickException(str(exc)) from exc
 
     @app.cli.command("doctor")
-    @click.option("--live", is_flag=True, help="Make small billable calls to the selected provider.")
+    @click.option("--live", is_flag=True, help="Make small billable calls to OpenAI.")
     def doctor(live):
         """Report runtime dependencies without exposing credentials."""
         import platform
@@ -234,21 +264,21 @@ def register(app):
             click.echo("OCR language check: unavailable")
         from .services.vectorstore import store
         click.echo(f"Chroma: {store().client.heartbeat()}")
-        selected = current_app.config["AI_PROVIDER"].upper()
-        click.echo(f"AI provider: {selected}")
+        selected = "OpenAI"
+        click.echo(f"Embedding provider: {selected}")
         click.echo(f"Embedding model/dimensions: {current_app.config['EMBEDDING_MODEL']} / {current_app.config['EMBEDDING_DIMENSIONS']}")
         click.echo(f"Generation model: {current_app.config['GENERATION_MODEL']}")
-        click.echo(f"{selected} key: " + ("configured" if current_app.config.get(f"{selected}_API_KEY") else "missing"))
+        click.echo(f"{selected} key: " + ("configured" if current_app.config.get("OPENAI_API_KEY") else "missing"))
         from .services.retrieval import incompatible_active_count
-        click.echo(f"Active indexes incompatible with selected embeddings: {incompatible_active_count()}")
+        click.echo(f"Active indexes incompatible with OpenAI embeddings: {incompatible_active_count()}")
         if live:
-            from .services.providers import provider
-            client = provider()
+            from .services.openai_provider import openai_client
+            client = openai_client()
             client.embed(["Synthetic learning policy"], "RETRIEVAL_DOCUMENT")
             client.count("Synthetic learning policy")
             client.generate('No evidence. Question: what is the pension rate?', 'Return JSON with status insufficient_evidence, answer, sources as an empty list.')
             client.close()
-            click.echo(f"{selected} embedding, token counting, and generation smoke calls passed.")
+            click.echo("OpenAI embedding, token counting, and generation smoke calls passed.")
 
     @app.cli.command("process")
     @click.argument("version_id")

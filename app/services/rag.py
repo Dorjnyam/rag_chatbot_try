@@ -6,7 +6,7 @@ from flask import current_app
 from sqlalchemy import select
 from ..extensions import db
 from ..models import QueryLog, uid
-from .providers import provider
+from .openai_provider import openai_client
 from .retrieval import retrieve, still_active
 from .language import query_candidates, answer_is_mongolian, normalize_text
 
@@ -34,7 +34,7 @@ def language_of(question):
 
 def config_snapshot(k):
     c = current_app.config
-    return dict(provider=c.get("AI_PROVIDER", "gemini"), embedding_model=c["EMBEDDING_MODEL"], dimensions=c["EMBEDDING_DIMENSIONS"], generation_model=c["GENERATION_MODEL"],
+    return dict(provider="openai", embedding_model=c["EMBEDDING_MODEL"], dimensions=c["EMBEDDING_DIMENSIONS"], generation_model=c["GENERATION_MODEL"],
         prompt_revision=PROMPT_REVISION, top_k=k, context_tokens=c["CONTEXT_TOKENS"], history_tokens=c["HISTORY_TOKENS"],
         input_tokens=c["INPUT_TOKENS"], output_tokens=c["OUTPUT_TOKENS"], temperature=0,
         retrieval_mode=c["RETRIEVAL_MODE"], dense_top_k=c["DENSE_TOP_K"], sparse_top_k=c["SPARSE_TOP_K"], rrf_k=c["RRF_K"],
@@ -154,7 +154,7 @@ def error_code(exc):
         return 'request_deadline'
     if 'embedding input exceeds' in detail:
         return 'question_too_long'
-    if 'openai request failed' in detail or 'gemini request failed' in detail:
+    if 'openai request failed' in detail:
         return 'provider_request_failed'
     if 'documents changed' in detail:
         return 'documents_changed'
@@ -230,7 +230,7 @@ def ask(question, conversation_id, k=None, document_ids=None, language=None, ret
             has_corpus = bool(active_versions(document_ids, language))
             db.session.commit()
             if has_corpus:
-                client = provider(deadline=deadline)
+                client = openai_client(deadline=deadline)
                 if current_app.config['QUERY_REWRITING_ENABLED'] and info['language'] in ('mixed', 'unknown') and hasattr(client, 'rewrite_query'):
                     rewrite_start = time.monotonic()
                     attempts_before = getattr(client, 'attempts', 0)

@@ -2,7 +2,7 @@
 import random
 import time
 from flask import current_app
-from .gemini import normalize_vector
+from .vectors import normalize_vector
 
 
 class OpenAIProvider:
@@ -10,15 +10,20 @@ class OpenAIProvider:
         try:
             from openai import OpenAI
         except ImportError as exc:
-            raise ValueError("Install the OpenAI SDK from requirements.txt to use AI_PROVIDER=openai.") from exc
+            raise ValueError("Install the OpenAI SDK from requirements.txt to use the configured OpenAI models.") from exc
         self.config = current_app.config
         if not self.config.get("OPENAI_API_KEY"):
             raise ValueError("Set OPENAI_API_KEY in .env to use OpenAI embeddings and answers.")
         self.deadline = deadline
         self.embedding_model = self.config["OPENAI_EMBEDDING_MODEL"]
+        self.embedding_model_revision = self.config.get("OPENAI_EMBEDDING_MODEL_REVISION") or None
         self.generation_model = self.config["OPENAI_GENERATION_MODEL"]
         self.embedding_dimensions = self.config["OPENAI_EMBEDDING_DIMENSIONS"]
         self.attempts = 0
+        self.embedding_request_latency_ms = []
+        self.provider_attempt_latency_ms = []
+        self.embedding_response_models = set()
+        self.embedding_error_count = 0
         self.usage = {"provider": "openai", "embedding_model": self.embedding_model,
             "generation_model": self.generation_model, "embedding": {}, "generation": {}}
         self._encodings = {}
@@ -66,7 +71,13 @@ class OpenAIProvider:
                 if self.deadline:
                     timeout = min(timeout, self.deadline - time.monotonic())
                 client = self.client.with_options(timeout=max(.1, timeout), max_retries=0)
-                return operation(client)
+                attempt_started = time.monotonic()
+                try:
+                    return operation(client)
+                finally:
+                    if not hasattr(self, "provider_attempt_latency_ms"):
+                        self.provider_attempt_latency_ms = []
+                    self.provider_attempt_latency_ms.append((time.monotonic() - attempt_started) * 1000)
             except Exception as exc:
                 from openai import APIConnectionError, APIStatusError, APITimeoutError, RateLimitError
                 status = getattr(exc, "status_code", None)
@@ -119,20 +130,41 @@ class OpenAIProvider:
     def embed(self, texts, task, model=None, dimensions=None):
         if not texts:
             return []
+        if task not in ("RETRIEVAL_DOCUMENT", "RETRIEVAL_QUERY"):
+            raise ValueError("Embedding task must be RETRIEVAL_DOCUMENT or RETRIEVAL_QUERY.")
+        if any(not isinstance(text, str) or not text.strip() for text in texts):
+            raise ValueError("Embedding inputs must be non-empty strings.")
         model = model or self.embedding_model
-        dimensions = dimensions or self.embedding_dimensions
+        dimensions = self.embedding_dimensions if dimensions is None else dimensions
         encoding = self._encoding(model)
         for text in texts:
             size = len(encoding.encode(text)) if encoding else len(text.encode("utf8"))
             if size > 7900:
                 raise ValueError("Embedding input exceeds the 7,900-token safety limit; split the chunk first.")
-        response = self._call(lambda client: client.embeddings.create(model=model, input=texts, dimensions=dimensions))
+        started = time.monotonic()
+        try:
+            response = self._call(lambda client: client.embeddings.create(model=model, input=texts, dimensions=dimensions))
+        except Exception:
+            self.embedding_error_count = getattr(self, "embedding_error_count", 0) + 1
+            raise
+        if not hasattr(self, "embedding_request_latency_ms"):
+            self.embedding_request_latency_ms = []
+        self.embedding_request_latency_ms.append((time.monotonic() - started) * 1000)
+        response_model = getattr(response, "model", None)
+        if response_model:
+            if response_model != model:
+                raise ValueError("OpenAI response model differs from the requested embedding model.")
+            if not hasattr(self, "embedding_response_models"):
+                self.embedding_response_models = set()
+            self.embedding_response_models.add(response_model)
         usage = getattr(response, "usage", None)
         if usage:
             self._record_usage("embedding", usage)
         ordered = sorted(response.data, key=lambda item: item.index)
         if len(ordered) != len(texts):
             raise ValueError("Embedding response count does not match inputs.")
+        if [item.index for item in ordered] != list(range(len(texts))):
+            raise ValueError("Embedding response indexes are missing or duplicated.")
         return [normalize_vector(item.embedding, dimensions) for item in ordered]
 
     def generate(self, prompt, system):
@@ -172,3 +204,9 @@ class OpenAIProvider:
 
     def close(self):
         self.client.close()
+
+
+def openai_client(deadline=None):
+    """Construct the sole production adapter, with an OpenAI-only test seam."""
+    factory = current_app.config.get("OPENAI_FACTORY", OpenAIProvider)
+    return factory(deadline=deadline)

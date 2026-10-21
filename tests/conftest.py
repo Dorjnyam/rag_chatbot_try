@@ -17,8 +17,8 @@ from app.extensions import db
 from app.services.chunking import assign_ids
 
 
-class FakeGemini:
-    """Deterministic test double; never evidence of Gemini multilingual quality."""
+class FakeOpenAI:
+    """Deterministic OpenAI test double; not evidence of retrieval quality."""
     def __init__(self, deadline=None):
         self.attempts, self.usage = 0, {}
     def count(self, text, model=None):
@@ -27,7 +27,7 @@ class FakeGemini:
         return assign_ids(chunks, version_id, config)
     def embed(self, texts, task, model=None, dimensions=None):
         from flask import current_app
-        from app.services.gemini import normalize_vector
+        from app.services.vectors import normalize_vector
         dims = dimensions or current_app.config["EMBEDDING_DIMENSIONS"]
         vectors = []
         for item in texts:
@@ -47,7 +47,7 @@ def isolate_secrets_and_dotenv(monkeypatch):
     """No developer credentials or .env values enter any test app."""
     import app as application
     monkeypatch.setattr(application, "load_dotenv", lambda *args, **kwargs: False)
-    for name in ("OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY"):
+    for name in ("OPENAI_API_KEY",):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -95,8 +95,8 @@ def app(tmp_path):
         pytest.skip("Cannot provision an owned disposable PostgreSQL database; verify TEST_DATABASE_ADMIN_URL and CREATEDB permission")
     try:
         application = create_app(dict(TESTING=True, DATA_DIR=tmp_path, SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI=url,
-            AI_PROVIDER="gemini", EMBEDDING_MODEL="gemini-embedding-001", GENERATION_MODEL="gemini-3.5-flash-lite",
-            GEMINI_API_KEY="", OPENAI_API_KEY="", GEMINI_FACTORY=FakeGemini, OPENAI_FACTORY=FakeGemini,
+            EMBEDDING_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", GENERATION_MODEL="gpt-test",
+            OPENAI_API_KEY="", OPENAI_FACTORY=FakeOpenAI,
             EMBEDDING_DIMENSIONS=128, TRUSTED_HOSTS=["localhost", "127.0.0.1"]))
         with application.app_context():
             try:
