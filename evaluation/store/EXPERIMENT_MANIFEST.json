@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "phase": "Phase 4 Store",
+  "research_reference": "Advanced_RAG_Chapter6_IEEE.docx, Sections 6.1-6.12 (Section 6.9 is absent in the supplied document)",
+  "primary_experiment": "synthetic_exact_vs_chroma_ann_and_scale",
+  "input": {
+    "source": "seeded synthetic float32 vectors",
+    "dimensions": 1536,
+    "vector_normalization": "L2 unit norm",
+    "N": [1000, 2468, 5000, 10000],
+    "repeat_count": 2,
+    "query_count_per_repeat": 24,
+    "seed": 6102026,
+    "candidate_filters": [
+      "unfiltered",
+      "filtered_segment_a",
+      "small_candidate_set (3 eligible vectors; tests k greater than eligible count)"
+    ]
+  },
+  "exact_reference": {
+    "implementation": "NumPy exhaustive cosine distance",
+    "candidate_vectors": "embeddings read back from the same isolated Chroma collection",
+    "candidate_filter": "same metadata condition as Chroma query",
+    "stable_order": "(distance, stable vector ID)",
+    "k": [1, 5, 10]
+  },
+  "chroma": {
+    "production_requested": {
+      "space": "cosine",
+      "batch_size": 1,
+      "sync_threshold": 1
+    },
+    "effective_observed_on_chromadb_1_5_9": {
+      "space": "cosine",
+      "sync_threshold": 1,
+      "max_neighbors": 16,
+      "ef_construction": 100,
+      "ef_search": 100,
+      "batch_size": null,
+      "batch_size_note": "not present in public collection.configuration"
+    },
+    "controlled_configurations": [
+      {
+        "id": "current_sync1",
+        "construction": {"sync_threshold": 1, "max_neighbors": 16, "ef_construction": 100},
+        "search": {"ef_search": 100}
+      },
+      {
+        "id": "current_sync1_ef50",
+        "construction": {"sync_threshold": 1, "max_neighbors": 16, "ef_construction": 100},
+        "search": {"ef_search": 50}
+      },
+      {
+        "id": "sync_default",
+        "construction": {"sync_threshold": 1000, "max_neighbors": 16, "ef_construction": 100},
+        "search": {"ef_search": 100}
+      },
+      {
+        "id": "smaller_graph",
+        "construction": {"sync_threshold": 1000, "max_neighbors": 8, "ef_construction": 100},
+        "search": {"ef_search": 100}
+      }
+    ],
+    "insert_batch_size": 128,
+    "batch_size_1_effective_setting": "not benchmarkable through effective public Chroma 1.5.9 collection config; report as requested/unsupported rather than silently assuming active"
+  },
+  "metrics": [
+    "collection initialization and total index build milliseconds",
+    "upsert latency and items per second",
+    "Index Recall@1/@5/@10, top-k overlap and distance absolute error",
+    "result-count completeness and k greater than eligible-candidate count",
+    "filtered and unfiltered search-only P50/P95/P99",
+    "fresh client reopen latency and persistence integrity",
+    "isolated Chroma directory bytes and process peak RSS"
+  ],
+  "excluded_from_search_latency": ["embedding inference", "PostgreSQL source verification", "reranking", "LLM generation"],
+  "resource_guards": {
+    "max_N": 10000,
+    "minimum_available_RAM_bytes": 1073741824,
+    "minimum_free_disk_bytes": 2147483648,
+    "max_repeats": 3,
+    "max_queries_per_trial": 64,
+    "on_limit": "stop before creating an experiment collection; no partial result is reported as complete"
+  },
+  "isolation": {
+    "temporary_chroma_dirs": "instance/store-evaluation/scratch; removed after each trial",
+    "private_result_artifact": "instance/store-evaluation/runs/<run_id>/result.json",
+    "production_postgres": false,
+    "production_chroma": false,
+    "embedding_api_calls": 0,
+    "private_vector_payload_in_reports": false
+  },
+  "latest_completed_run": {
+    "run_id": "d11ef3d2a1e0",
+    "private_result_path": "instance/store-evaluation/runs/d11ef3d2a1e0/result.json",
+    "result_sha256": "fbb83fb5a463e513fd5c1ca4f2c4c439bb7b433ed7d4197b7ba45a350387ea29",
+    "trial_count": 28,
+    "synthetic_vector_instances_upserted_across_repeats": 135744,
+    "candidate_id_parity": "verified in every trial/filter",
+    "result_count_completeness": "verified in every trial/filter"
+  },
+  "real_vectors": {
+    "status": "unavailable",
+    "evidence": "existing Embed smoke records are plan-only with zero API usage; saved Chroma smoke is explicitly local-mock",
+    "production_chroma_was_opened": false
+  },
+  "quality_boundary": {
+    "synthetic_index_fidelity": "measured separately",
+    "human_relevance": "deferred; existing dataset has 2 verified questions and is not representative",
+    "mongolian_retrieval_accuracy_claim": false,
+    "embedding_model_comparison": "deferred"
+  }
+}

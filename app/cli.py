@@ -98,6 +98,29 @@ def register(app):
             raise click.ClickException(f"Offline Embed pipeline benchmark failed: {type(exc).__name__}: {exc}") from exc
         click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
+    @app.cli.group("benchmark-store")
+    def benchmark_store():
+        """Measure isolated synthetic Chroma index fidelity and scale; no API/DB/production access."""
+
+    @benchmark_store.command("run")
+    @click.option("--sizes", default="1000,2468,5000,10000", show_default=True,
+        help="Comma-separated synthetic vector counts (maximum 10,000).")
+    @click.option("--repeats", type=click.IntRange(1, 3), default=2, show_default=True)
+    @click.option("--queries", type=click.IntRange(1, 64), default=24, show_default=True)
+    @click.option("--seed", type=click.IntRange(min=0), default=6102026, show_default=True)
+    def benchmark_store_run(sizes, repeats, queries, seed):
+        """Run deterministic 1536-d synthetic index benchmarks in temporary Chroma stores."""
+        from .store_benchmark import run_store_benchmark
+        try:
+            parsed_sizes = tuple(int(value.strip()) for value in sizes.split(",") if value.strip())
+            if not parsed_sizes:
+                raise ValueError("Provide at least one vector count.")
+            result = run_store_benchmark(Path(current_app.config["DATA_DIR"]), parsed_sizes,
+                repeats=repeats, query_count=queries, seed=seed)
+        except Exception as exc:
+            raise click.ClickException(f"Store benchmark stopped/failed: {type(exc).__name__}: {exc}") from exc
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+
     @app.cli.group("benchmark-split")
     def benchmark_split():
         """Freeze and measure Split inputs offline without DB, Chroma, or provider calls."""
