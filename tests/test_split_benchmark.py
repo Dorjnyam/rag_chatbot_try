@@ -57,3 +57,43 @@ def test_baseline_reference_fields_remain_na_without_human_reference():
     assert result["sentence_boundary_accuracy"] is None
     assert result["citation_source_span_accuracy"] is None
     assert result["sentence_boundary_heuristic_status"].startswith("punctuation heuristic")
+
+
+def test_a1_a3_chunks_preserve_mongolian_source_offsets_and_are_deterministic():
+    from app.split_experiments import _experimental_chunks
+    from app.split_benchmark import _merge_intervals
+
+    blocks = [
+        {"text": "1.2.3. Өдөр тутмын бодлого. " + ("Монгол өгүүлбэр. " * 180),
+         "heading": "Хэсэг A", "block": 1, "kind": "paragraph"},
+        {"text": "Хүснэгт | багана\nмөр | утга\n" + ("давтагдсан агуулга " * 40),
+         "heading": "Хэсэг A", "block": 2, "kind": "table"},
+        {"text": "Ижил гарчигтай хоёр дахь хэсэг. " * 30,
+         "heading": "Хэсэг B", "block": 3, "kind": "paragraph"},
+    ]
+    enc = _tokenizer()
+    for strategy in ("fixed-token-v1", "recursive-token-v1"):
+        stable_version = str(uuid4())
+        first = _experimental_chunks(blocks, strategy, enc, stable_version)
+        second = _experimental_chunks(blocks, strategy, enc, stable_version)
+        assert [item["text"] for item in first] == [item["text"] for item in second]
+        assert [item["id"] for item in first] == [item["id"] for item in second]
+        if strategy == "fixed-token-v1":
+            assert max(len(enc.encode(item["text"])) for item in first) <= 512
+        intervals, _ = _source_intervals(blocks, first, 512, 0)
+        assert all(sum(hi-lo for lo, hi in _merge_intervals(spans)) == len(blocks[int(key)-1]["text"])
+                   for key, spans in intervals.items())
+        assert all("\ufffd" not in item["text"] for item in first)
+
+
+def test_recursive_chunks_prefer_sentence_paragraph_separator_and_keep_metrics_unverified():
+    from app.split_experiments import _experimental_chunks
+
+    blocks = [{"text": ("Нэг заалт өгүүлбэрээр төгсөнө.\n\n" * 150), "heading": "", "block": 1}]
+    version_id = str(uuid4())
+    chunks = _experimental_chunks(blocks, "recursive-token-v1", _tokenizer(), version_id)
+    assert len(chunks) > 1
+    result = _document_metrics("DOC0001", blocks, chunks, chunks, _tokenizer(), 512, 0)
+    assert result["coverage_ratio"] == 1.0
+    assert result["complete_clause_preservation"] is None
+    assert result["sentence_boundary_accuracy"] is None

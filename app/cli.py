@@ -46,6 +46,25 @@ def register(app):
         except Exception as exc:
             raise click.ClickException(f"Tokenizer probe failed: {type(exc).__name__}: {exc}") from exc
 
+    @benchmark_split.command("prepare-annotations")
+    @click.option("--documents", type=click.IntRange(1, 40), default=20)
+    @click.option("--questions-per-document", type=click.IntRange(2, 5), default=4)
+    def benchmark_split_prepare_annotations(documents, questions_per_document):
+        from .split_experiments import prepare_annotations
+        try:
+            click.echo(json.dumps(prepare_annotations(documents, questions_per_document), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Annotation package preparation failed: {type(exc).__name__}: {exc}") from exc
+
+    @benchmark_split.command("run-a1-a3")
+    @click.option("--snapshot", "snapshot_id", default=None, help="Previously frozen snapshot ID.")
+    def benchmark_split_run_a1_a3(snapshot_id):
+        from .split_experiments import run_a1_a3
+        try:
+            click.echo(json.dumps(run_a1_a3(snapshot_id) if snapshot_id else run_a1_a3(), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"A1-A3 offline comparison failed: {type(exc).__name__}: {exc}") from exc
+
     @app.cli.group("migrate-indexes")
     def migrate_indexes():
         """Move active documents between embedding providers without deleting old indexes."""

@@ -203,7 +203,11 @@ def _group_blocks(blocks):
 
 
 def _source_intervals(blocks, chunks, size=1800, overlap=250):
-    """Map existing chunk group-local character windows to source block intervals."""
+    """Map ordered chunk character offsets to source-block intervals.
+
+    ``size`` is retained for call compatibility; offsets, not a presumed fixed
+    window size, define coverage so offline token chunkers can share this audit.
+    """
     groups = _group_blocks(blocks)
     by_block = {}
     separators = 0
@@ -221,8 +225,8 @@ def _source_intervals(blocks, chunks, size=1800, overlap=250):
         while start < text_len and idx < len(chunks):
             item = chunks[idx]
             lo, hi = item["metadata"]["char_start"], item["metadata"]["char_end"]
-            if lo != start or hi != min(start + size, text_len):
-                raise ValueError("Existing chunk offsets do not match the frozen character-window configuration.")
+            if lo != start or hi <= lo or hi > text_len:
+                raise ValueError("Chunk offsets are not a contiguous ordered cover of their source group.")
             for blo, bhi, block in spans:
                 left, right = max(lo, blo), min(hi, bhi)
                 if right > left:
@@ -256,9 +260,11 @@ def _sentence_boundary_diagnostics(blocks, chunks, size, overlap):
     punctuation = set(".!?。！？;；:：”’)]}»」』\"")
     for group in groups:
         text = "\n\n".join(block.get("text", "") for block in group)
-        start = 0
-        while start < len(text) and index < len(chunks):
-            end = min(start + size, len(text))
+        while index < len(chunks):
+            start = chunks[index]["metadata"]["char_start"]
+            end = chunks[index]["metadata"]["char_end"]
+            if end > len(text):
+                raise ValueError("Chunk boundary exceeds source group while checking punctuation heuristic.")
             if end < len(text):
                 boundaries += 1
                 left = text[start:end].rstrip()
@@ -267,7 +273,6 @@ def _sentence_boundary_diagnostics(blocks, chunks, size, overlap):
             index += 1
             if end == len(text):
                 break
-            start = end - overlap
     return violations, boundaries
 
 
@@ -295,12 +300,25 @@ def _document_metrics(doc_id, blocks, raw_chunks, fitted_chunks, enc, size=1800,
     raw_texts = [item["text"] for item in raw_chunks]
     token_counts = [len(enc.encode(text)) for text in raw_texts]
     char_counts = [len(text) for text in raw_texts]
-    duplicate_count = len(raw_texts) - len(set(raw_texts))
+    content_texts = [text for text in raw_texts if text.strip()]
+    duplicate_count = len(content_texts) - len(set(content_texts))
+    separator_only_count = len(raw_texts) - len(content_texts)
     joined_chars = sum(char_counts)
     overlap_chars = max(0, joined_chars - covered - separator_chars)
     headings = [item["metadata"].get("heading", "") for item in raw_chunks]
     pages = [(item["metadata"].get("page_start"), item["metadata"].get("page_end")) for item in raw_chunks]
     clause_count = sum(len(__import__("re").findall(r"(?m)^\s*\d+(?:\.\d+)*(?:[.)])?\s+", text)) for text in text_by_block.values())
+    import re
+    clause_pattern = re.compile(r"(?m)^\s*\d+(?:\.\d+)*(?:[.)])?\s+")
+    clause_markers = 0
+    clause_fragmented = 0
+    for key, text in text_by_block.items():
+        matches = list(clause_pattern.finditer(text))
+        clause_markers += len(matches)
+        for index, match in enumerate(matches):
+            clause_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+            if not any(lo <= match.start() and hi >= clause_end for lo, hi in intervals.get(key, [])):
+                clause_fragmented += 1
     sentence_violations, sentence_boundaries = _sentence_boundary_diagnostics(blocks, raw_chunks, size, overlap)
     partial_tables = sum(bool(item["metadata"].get("partial_table")) for item in raw_chunks)
     total_tokens = sum(token_counts)
@@ -317,6 +335,7 @@ def _document_metrics(doc_id, blocks, raw_chunks, fitted_chunks, enc, size=1800,
         "chunk_token_min": min(token_counts, default=0), "chunk_token_median": statistics.median(token_counts) if token_counts else None,
         "chunk_token_p95": _percentile(token_counts, .95), "chunk_token_max": max(token_counts, default=0),
         "embedding_input_tokens_estimate": total_tokens, "duplicate_chunk_count": duplicate_count,
+        "separator_only_chunk_count": separator_only_count,
         "duplicate_chunk_ratio": duplicate_count/len(raw_chunks) if raw_chunks else None,
         "source_span_overlap_characters": overlap_chars,
         "source_span_overlap_ratio_of_emitted_chars": overlap_chars/joined_chars if joined_chars else 0,
@@ -328,6 +347,9 @@ def _document_metrics(doc_id, blocks, raw_chunks, fitted_chunks, enc, size=1800,
         "page_crossing_chunk_count": (sum(1 for a,b in pages if a is not None and b is not None and a != b)
                                        if any(a is not None or b is not None for a,b in pages) else None),
         "numbered_clause_markers_heuristic": clause_count,
+        "clause_fragmentation_count_heuristic": clause_fragmented,
+        "clause_fragmentation_denominator_heuristic": clause_markers,
+        "clause_fragmentation_status": "parser-block regex heuristic; not verified clause accuracy",
         "sentence_boundary_violations_heuristic": sentence_violations,
         "sentence_boundary_heuristic_denominator": sentence_boundaries,
         "sentence_boundary_heuristic_status": "punctuation heuristic only; not ground-truth accuracy",

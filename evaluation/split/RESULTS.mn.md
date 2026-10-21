@@ -97,3 +97,39 @@ Synthetic ба real Load нь өөр corpus; file composition, size, feature-э�
 - Команд: `flask --app app benchmark-split freeze`; `flask --app app benchmark-split run`; `flask --app app benchmark-split complexity-probe`; `flask --app app benchmark-split token-count-probe`.
 - Scoped tests: `tests/test_split_benchmark.py`, `tests/test_load_split_interface.py` — **5 passed**. pytest global cache-д ACL warning гарсан ч test-ийн үр дүн амжилттай; project доторх basetemp ашигласан.
 - `app/services/chunking.py`, parser implementation, production PostgreSQL болон ChromaDB өөрчлөгдөөгүй.
+
+## Phase 2 — Ground truth preparation ба A1–A3 offline comparison
+
+### Annotation preparation
+
+- Existing frozen corpus/template-ээс 20 representative баримт ашиглав (4 DOC, 16 DOCX). Clause/table/урт блок/олон block бүхий document шинжүүдийг зөвхөн parser output heuristic-аар сонголтод ашиглав.
+- 80 candidate асуулт үүсгэж, тус бүрт MN Cyrillic, English, MN Latin transliteration draft хувилбар гаргав (240 query string). Асуулт, evidence, expected answer бүгд unreviewed; `human_verified=0`.
+- Confidential text ба source path нь ignored `instance/split-evaluation/annotation-review/` дотор. Review workflow ба schema-г [annotation review report](ANNOTATION_REVIEW.mn.md)-д тайлбарлав.
+
+### Final controlled run
+
+Run `ecf27e9c-7558-41b5-ae09-c145937dfa7c`, snapshot `real-corpus-15b24382-v1`, parser `ordered-blocks-v1`, tokenizer `cl100k_base` / `tiktoken 0.12.0`. 154 input, 151 Split success, гурван өмнөх Load failure хадгалагдсан; A1/A2/A3 тус бүр 151/151 амжилттай. Offline run 231.347 секунд; 0 API call, 0 production PostgreSQL connection, 0 Chroma call.
+
+| Стратеги | Chunks | Token median/P95/max | Coverage median / non-whitespace loss | Clause fragmentation heuristic | Table-cut heuristic | Chunk latency P50/P95 |
+|---|---:|---:|---:|---:|---:|---:|
+| A0 — 1800 char / 250 overlap | 2,468 | 1,313 / 1,459 / 1,730 | 100% / A0-д нэг баримтын 9 whitespace char | N/A human reference | 1,140 | A0 stage latency өөр хэмжилтийн хүрээтэй |
+| A1 — 1800 char / 0 overlap | 2,244 | 1,311 / 1,461 / 1,739 | 100% / 0 | 453 / 7,808 | 994 | 0.913 / 3.681 ms |
+| A2 — fixed 512 tokens / 0 overlap | 4,946 | 512 / 512 / 512 | 100% / 0 | 1,158 / 7,808 | 2,308 | 30.117 / 150.051 ms |
+| A3 — recursive 512 tokens / 0 overlap | 6,116 | 438 / 508 / 512 | 100% / 0 | 213 / 7,808 | 2,138 | 35.788 / 145.182 ms |
+
+Clause fragmentation болон punctuation boundary нь parser-block regex heuristic; verified accuracy биш. A3 нь A2-оос heuristic таслалт цөөн үзүүлсэн боловч chunk count өндөр, table-cut хэвээр, latency нэмэгдсэн. Иймээс энэ үр дүн strategy winner тодорхойлохгүй; A3-ийг human-verified retrieval eval-д турших candidate гэж үзнэ. A2/A3 token max 512 тул budget алдагдаагүй. A1 CPU median process timer-ийн нарийвчлалаас бага/0 гэж хэмжигдсэн тул CPU харьцуулалтад найдвартай биш; memory болон latency үр дүн JSON-д бий.
+
+Strategy тус бүрийн Python allocation peak P95 нь A1 266,136 bytes, A2 4,896,867 bytes, A3 1,325,358 bytes. Бүх 3 strategy хамт ажилласан fresh worker-ийн RSS sample max 155,242,496 bytes; энэ нь per-algorithm peak RSS биш. Latency нь document бүрийн таван хэмжилтийн median-уудын P50/P95 бөгөөд tracemalloc instrumentation-той; нийт wall time process startup болон private input serialization агуулна.
+
+Дэлгэрэнгүй method, cost, limits, anonymous structural failure examples: [A1–A3 report](split-a1-a3-ecf27e9c.mn.md), [JSON](split-a1-a3-ecf27e9c.json), [CSV](split-a1-a3-ecf27e9c.csv). Experiment status болон дараагийн size-grid/overlap/SBD төлөвлөгөө: [EXPERIMENT_PLAN.json](EXPERIMENT_PLAN.json).
+
+### Retrieval readiness
+
+**NOT READY FOR RETRIEVAL QUALITY COMPARISON.** 80 асуултын аль нь ч хүнээр шалгагдаагүй тул evidence Recall@k, MRR, nDCG, evidence-span coverage ба citation accuracy бүгд N/A. Paid embedding run хийгээгүй. Дараагийн gate: annotation review хийх, draft query/evidence-ийг human-verified болгох, дараа нь embedding usage/cost estimate гаргаад ижил тусгаарласан retrieval configuration-аар A0–A3-г үнэлэх.
+
+Reproduce:
+
+```powershell
+.\.venv\Scripts\flask.exe --app app benchmark-split prepare-annotations --documents 20 --questions-per-document 4
+.\.venv\Scripts\flask.exe --app app benchmark-split run-a1-a3
+```

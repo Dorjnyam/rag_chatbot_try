@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
-  "status": "planned_not_executed",
+  "status": "A1-A3 offline baseline complete; retrieval evaluation blocked pending verified annotations",
   "source": "Advanced_RAG_Chapter4_IEEE.docx Sections 4.1-4.10",
   "controls": {
     "parser_revision": "ordered-blocks-v1",
     "source_snapshot_id": "real-corpus-15b24382-v1",
     "tokenizer": "cl100k_base",
     "embedding_model": "text-embedding-3-small",
-    "human_reference_status": "not yet available",
+    "human_reference_status": "80 candidate questions prepared; 0 human-verified; retrieval metrics N/A",
     "production_mutations": false
   },
   "experiments": [
     {
       "id": "E1-fixed-vs-recursive-512",
       "priority": 1,
-      "status": "planned",
+      "status": "offline_complete_retrieval_blocked",
       "research_sections": [
         "4.2",
         "4.3",
@@ -22,13 +22,15 @@
       ],
       "hypothesis": "Recursive separators preserve more complete paragraph/clause boundaries than token fixed windows at equivalent 512-token target.",
       "baseline": {
-        "algorithm": "fixed-token",
+        "id": "A2",
+        "algorithm": "fixed-token-v1",
         "size_tokens": 512,
         "overlap_tokens": 0
       },
       "variants": [
         {
-          "algorithm": "recursive",
+          "id": "A3",
+          "algorithm": "recursive-token-v1",
           "size_tokens": 512,
           "overlap_tokens": 0,
           "separators": [
@@ -56,10 +58,29 @@
         "peak memory"
       ],
       "limitation": "Cannot claim retrieval quality without verified query/evidence annotations.",
-      "cost_and_complexity": "Each local variant runs current-sized corpus chunking only; retrieval embedding cost remains 0 until a separately approved retrieval experiment. Complexity: two chunking passes per document; boundary comparison requires verified references.",
-      "failure_analysis": "Not executed: this delivery stops before alternative algorithms. Failure analysis is N/A until results exist.",
-      "results": "N/A: planned only.",
-      "conclusion": "N/A: planned only."
+      "cost_and_complexity": "Measured local chunking only. Embedding API cost and actual vector index cost are 0/not incurred. Prospective token estimates are in the run report; price estimate is deferred until annotation review and before any retrieval run.",
+      "failure_analysis": "A2/A3 exact coverage median 1.0 and zero non-whitespace loss. Parser-block clause and punctuation heuristics favor A3 vs A2, but they are not human accuracy. Table-cut heuristics remain high. A3 emits more chunks and costs more chunking latency. See final run report; no strategy superiority or retrieval claim.",
+      "results": {
+        "run_id": "ecf27e9c-7558-41b5-ae09-c145937dfa7c",
+        "report": "split-a1-a3-ecf27e9c.mn.md",
+        "a2_chunks": 4946,
+        "a3_chunks": 6116,
+        "a2_token_max": 512,
+        "a3_token_max": 512,
+        "a2_clause_fragmentations_heuristic": 1158,
+        "a3_clause_fragmentations_heuristic": 213,
+        "a2_table_cut_chunks_heuristic": 2308,
+        "a3_table_cut_chunks_heuristic": 2138,
+        "retrieval_metrics": "N/A; no human-verified references"
+      },
+      "conclusion": "Offline comparison completed. A3 shows a lower parser-block clause/punctuation heuristic count than A2 at higher chunk count; treat as a candidate for annotated retrieval experiment, not a winner. Retrieval comparison remains blocked pending human review.",
+      "supplementary_baseline": {
+        "id": "A1",
+        "algorithm": "characters-v1",
+        "size_characters": 1800,
+        "overlap_characters": 0,
+        "current_splitter_called_without_production_modification": true
+      }
     },
     {
       "id": "E2-size-grid",
@@ -289,5 +310,29 @@
     "cost_and_complexity",
     "limitations",
     "conclusion"
-  ]
+  ],
+  "executed_run": {
+    "run_id": "ecf27e9c-7558-41b5-ae09-c145937dfa7c",
+    "report": "evaluation/split/split-a1-a3-ecf27e9c.mn.md",
+    "json": "evaluation/split/split-a1-a3-ecf27e9c.json",
+    "csv": "evaluation/split/split-a1-a3-ecf27e9c.csv",
+    "snapshot_id": "real-corpus-15b24382-v1",
+    "dataset_sha256": "15b24382aeba13e943382370f5a4bfb4ede50b4033805006bad692d23bf3d56a",
+    "split_inputs": 151,
+    "load_failures_preserved": 3,
+    "human_verified_references": 0,
+    "api_calls": 0,
+    "production_database_connections": 0,
+    "production_vector_store_calls": 0,
+    "retrieval_evaluation": "not run; not ready until evidence annotations are reviewed"
+  },
+  "annotation_package": {
+    "review_report": "evaluation/split/ANNOTATION_REVIEW.mn.md",
+    "private_directory": "instance/split-evaluation/annotation-review/",
+    "selected_documents": 20,
+    "candidate_questions": 80,
+    "query_variants_per_question": 3,
+    "human_verified": 0,
+    "confidential_content_committed": false
+  }
 }
