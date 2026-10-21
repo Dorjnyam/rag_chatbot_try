@@ -53,6 +53,7 @@ def _initial_state(review_root: Path) -> dict:
             "source_sha256": source.get("source_sha256"),
             "source_file": source.get("source_file"),
             "snapshot_id": bundle.get("snapshot_id"),
+            "source_dataset_sha256": bundle.get("dataset_sha256"),
             "proposed_question_variants": source.get("question_variants", {}),
             "question_variants": source.get("question_variants", {}).copy(),
             "verified_variations": {language: False for language in LANGUAGES},
@@ -96,6 +97,14 @@ def load_state(review_root: Path) -> dict:
     expected = {candidate.get("candidate_id") for candidate in bundle.get("candidates", [])}
     if set(state.get("candidates", {})) != expected:
         raise ValueError("Review state candidate IDs do not match the immutable draft package.")
+    immutable = {candidate["candidate_id"]: candidate for candidate in bundle.get("candidates", [])}
+    for candidate_id, record in state["candidates"].items():
+        source = immutable[candidate_id]
+        if any(record.get(field) != expected_value for field, expected_value in {
+            "doc_id": source.get("doc_id"), "source_sha256": source.get("source_sha256"),
+            "source_file": source.get("source_file"), "snapshot_id": bundle.get("snapshot_id"),
+            "source_dataset_sha256": bundle.get("dataset_sha256")}.items()):
+            raise ValueError("Review state document identity differs from the immutable candidate package.")
     return state
 
 
@@ -144,6 +153,8 @@ def _snapshot_contains_evidence(record: dict, evidence_text: str, snapshot_root:
         return False
     try:
         manifest = json.loads(manifest_path.read_text(encoding="utf8"))
+        if manifest.get("snapshot_id") != snapshot_id or manifest.get("dataset_sha256") != record.get("source_dataset_sha256"):
+            return False
         doc = next(row for row in manifest["records"] if row.get("doc_id") == record.get("doc_id"))
         artifact_path = (snapshot_dir / doc["artifact"]).resolve()
         artifact_path.relative_to(snapshot_dir)
@@ -207,7 +218,14 @@ def readiness_report(review_root: Path, uploads_root: Path, snapshot_root: Path)
         for language in LANGUAGES:
             if record.get("verified_variations", {}).get(language) and (record.get("question_variants", {}).get(language) or "").strip():
                 valid_variations[language] += 1
-    source_invalid = sum(not validate_source_identity(record, uploads_root)[0] for record in records)
+    def invalid_reference(record):
+        source_ok = validate_source_identity(record, uploads_root)[0]
+        location = record.get("source_location", {})
+        has_location = any(location.get(field) not in (None, "")
+            for field in ("page", "section", "clause_id", "document_version"))
+        unconfirmed_anchor = bool((record.get("source_reference") or "").strip()) and not record.get("source_location_verified")
+        return not source_ok or unconfirmed_anchor or (has_location and not record.get("source_location_verified"))
+    source_invalid = sum(invalid_reference(record) for record in records)
     missing_evidence = sum(not record.get("evidence_text", "").strip() for record in records)
     invalid_approved = {record["candidate_id"]: validate_approved_record(record, uploads_root, snapshot_root)
         for record in approved}
@@ -254,6 +272,7 @@ def export_dataset(review_root: Path, uploads_root: Path, snapshot_root: Path,
     for record in accepted:
         records.append({"candidate_id": record["candidate_id"], "doc_id": record["doc_id"],
             "source_sha256": record["source_sha256"], "snapshot_id": record["snapshot_id"],
+            "source_dataset_sha256": record["source_dataset_sha256"],
             "query_variants": {language: record["question_variants"][language]
                 for language in LANGUAGES if record.get("verified_variations", {}).get(language)
                 and record.get("question_variants", {}).get(language, "").strip()},
@@ -268,6 +287,7 @@ def export_dataset(review_root: Path, uploads_root: Path, snapshot_root: Path,
         "valid_query_variation_count": sum(len(record["query_variants"]) for record in records),
         "query_variation_coverage": {language: sum(language in record["query_variants"] for record in records)
             for language in LANGUAGES}, "records": records, "validation_failures": [],
+        "validation_failure_count": 0,
         "representativeness_and_retrieval_readiness": readiness_report(review_root, uploads_root, snapshot_root)}
     payload["dataset_sha256"] = _canonical_hash(payload)
     datasets_root.mkdir(parents=True, exist_ok=True)

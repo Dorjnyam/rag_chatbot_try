@@ -30,8 +30,10 @@ def create_app(test_config=None):
     from . import models
     from .routes.documents import bp as documents
     from .routes.chat import bp as chat
+    from .routes.annotation_review import bp as annotation_review
     app.register_blueprint(documents)
     app.register_blueprint(chat)
+    app.register_blueprint(annotation_review)
     from .cli import register
     register(app)
 

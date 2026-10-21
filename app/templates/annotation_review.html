@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ground-truth annotation review</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='annotation_review.css') }}">
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">LOCAL · PRIVATE · SPLIT EVALUATION</p>
+    <h1>Human annotation review</h1>
+    <p>Энэ interface зөвхөн localhost дээр ажиллана. Бүх save нь private <code>instance/</code> дотор хадгалагдана.</p>
+  </header>
+
+  <section class="summary" aria-label="Review progress">
+    <div><strong>{{ readiness.approved_questions }}</strong><span>Approved / corrected</span></div>
+    <div><strong>{{ readiness.rejected_questions }}</strong><span>Rejected</span></div>
+    <div><strong>{{ readiness.awaiting_review_questions }}</strong><span>Awaiting / skipped</span></div>
+    <div><strong>{{ total }}</strong><span>Total candidates</span></div>
+    <p class="readiness {% if readiness.retrieval_evaluation_ready %}ready{% else %}blocked{% endif %}">
+      Retrieval evaluation: <b>{{ "READY" if readiness.retrieval_evaluation_ready else "NOT READY" }}</b>
+      {% if readiness.readiness_reasons %}<span>{{ readiness.readiness_reasons|join(" · ") }}</span>{% endif %}
+    </p>
+    <p class="coverage">Language coverage:
+      {% for language, count in readiness.verified_query_variation_coverage.items() %}<span>{{ language }} {{ count }}</span>{% endfor %}
+      · Missing evidence {{ readiness.missing_evidence_questions }}
+      · Invalid source {{ readiness.invalid_source_references }}
+    </p>
+    <p class="coverage">Verified query types:
+      {% for query_type, count in readiness.approved_query_type_coverage.items() %}<span>{{ query_type }} {{ count }}</span>{% endfor %}
+    </p>
+  </section>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}<div class="messages">{% for category, message in messages %}<p class="{{ category }}">{{ message }}</p>{% endfor %}</div>{% endif %}
+  {% endwith %}
+
+  {% if candidate %}
+  <nav class="navigation" aria-label="Candidate navigation">
+    {% if previous_id %}<a href="{{ url_for('annotation_review.index', candidate=previous_id) }}">← Өмнөх</a>{% else %}<span></span>{% endif %}
+    <span>{{ position + 1 }} / {{ total }} · {{ candidate.status }} · {{ candidate.candidate_id }}</span>
+    {% if next_id %}<a href="{{ url_for('annotation_review.index', candidate=next_id) }}">Дараах →</a>{% else %}<span></span>{% endif %}
+  </nav>
+
+  <section class="source-card">
+    <div><h2>Original source</h2><p>Document identity: <code>{{ candidate.doc_id }}</code> · Frozen source SHA-256: <code>{{ candidate.source_sha256 }}</code></p></div>
+    <a class="button secondary" href="{{ url_for('annotation_review.source', candidate_id=candidate.candidate_id) }}">Эх баримтыг нээх / татах</a>
+  </section>
+
+  <form method="post" action="{{ url_for('annotation_review.update', candidate_id=candidate.candidate_id, next=next_id or candidate.candidate_id) }}">
+    <input type="hidden" name="csrf" value="{{ session.get('csrf', '') }}">
+
+    <section class="card">
+      <h2>Question variations</h2>
+      {% for language in languages %}
+      <label>{{ {"mn_cyrl":"Mongolian Cyrillic", "en":"English", "mn_latn_draft":"Mongolian Latin transliteration"}[language] }}
+        <textarea name="question_{{ language }}" rows="3">{{ candidate.question_variants.get(language, "") }}</textarea>
+      </label>
+      <label class="check"><input type="checkbox" name="verified_{{ language }}" value="yes" {% if candidate.verified_variations.get(language) %}checked{% endif %}>
+        Энэ query variation-г reviewer шалгаж, approved хувилбар болгон ашиглахыг баталсан.</label>
+      {% endfor %}
+      <label>Query type
+        <select name="query_type"><option value="">-- Reviewer ангилна --</option>
+          {% for item in query_types %}<option value="{{ item }}" {% if candidate.query_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        </select>
+      </label>
+    </section>
+
+    <section class="card">
+      <h2>Evidence ба expected answer</h2>
+      <label>Proposed evidence (unverified; эх баримттай тулгана)
+        <pre>{{ candidate.proposed_evidence_text }}</pre>
+      </label>
+      <label>Reviewer-verified exact evidence text
+        <textarea name="evidence_text" rows="8" required>{{ candidate.evidence_text }}</textarea>
+      </label>
+      <label>Expected answer
+        <textarea name="expected_answer" rows="4" required>{{ candidate.expected_answer }}</textarea>
+      </label>
+      <label class="check"><input type="checkbox" name="evidence_matches_original" value="yes" {% if candidate.evidence_matches_original %}checked{% endif %}>
+        Evidence text-ийг original document дээр нүдээр шалгасан.</label>
+      <label class="check"><input type="checkbox" name="question_evidence_relation_confirmed" value="yes" {% if candidate.question_evidence_relation_confirmed %}checked{% endif %}>
+        Асуулт нь энэ evidence-ээс хариулагдахыг бие даан шалгасан.</label>
+    </section>
+
+    <section class="card">
+      <h2>Source reference</h2>
+      <p>Parser-local block нь эх баримтын баталгаатай page/clause биш. Зөвхөн visual source-оос баталсан metadata-г бичнэ.</p>
+      <p>Proposed parser location: <code>{{ candidate.source_location }}</code></p>
+      <label>Баталгаажсан source reference / span тайлбар
+        <textarea name="source_reference" rows="3">{{ candidate.source_reference }}</textarea>
+      </label>
+      <div class="grid">
+        {% for field, label in [("page","Page"),("section","Section"),("clause_id","Clause ID"),("document_version","Document version")] %}
+        <label>{{ label }} <input name="location_{{ field }}" value="{{ candidate.source_location.get(field) or "" }}"></label>
+        {% endfor %}
+      </div>
+      <label class="check"><input type="checkbox" name="source_location_verified" value="yes" {% if candidate.source_location_verified %}checked{% endif %}>
+        Дээрх source anchor болон бөглөсөн page/section/clause/version-ийг эх хувилбараас шалгасан.</label>
+    </section>
+
+    <section class="card reviewer">
+      <h2>Reviewer confirmation</h2>
+      <label>Reviewer ID <input name="reviewer_id" value="{{ candidate.reviewer_id or "" }}" maxlength="120" autocomplete="off"></label>
+      <label>Татгалзах шалтгаан (reject үйлдэлд шаардлагатай)
+        <input name="rejection_reason" value="{{ candidate.rejection_reason or "" }}" maxlength="1000">
+      </label>
+      <label class="check confirm"><input type="checkbox" name="human_confirmation" value="yes">
+        Би original source-ийг шалгаж, энэ үйлдлийг зориуд баталж байна. Codex-ийн draft автоматаар verified болохгүй.</label>
+      <div class="actions">
+        <button type="submit" name="action" value="save" class="secondary">Save progress</button>
+        <button type="submit" name="action" value="skip" class="secondary">Skip for later</button>
+        <button type="submit" name="action" value="reject" class="danger">Reject candidate</button>
+        <button type="submit" name="action" value="approve" class="primary">Approve verified annotation</button>
+      </div>
+    </section>
+  </form>
+  {% else %}
+    <p>Review candidate байхгүй. Эхлээд private annotation package үүсгэнэ үү.</p>
+  {% endif %}
+</main>
+</body>
+</html>

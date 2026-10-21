@@ -592,6 +592,8 @@ def _write_comparison_markdown(stem, report):
 
 def prepare_annotations(target_documents=20, questions_per_document=4):
     """Create private candidate questions and a self-contained local review page."""
+    if (ANNOTATION_ROOT / "review-state.json").exists() or (ANNOTATION_ROOT / "candidate-review.json").exists():
+        raise ValueError("Private annotation package already exists; refusing to overwrite reviewer data. Use the local review interface or archive it manually before preparing a new corpus.")
     snapshot = json.loads((SNAPSHOT_ROOT / SNAPSHOT_ID / "manifest.json").read_text(encoding="utf8"))
     template = json.loads((PUBLIC_ROOT / "ground_truth_template.mn.json").read_text(encoding="utf8"))
     selected = [row["doc_id"] for row in template["documents"] if row.get("verification_status") == "unreviewed"][:target_documents]
@@ -668,7 +670,7 @@ def prepare_annotations(target_documents=20, questions_per_document=4):
     target.write_text(json.dumps(private, ensure_ascii=False, indent=2), encoding="utf8")
     html = _review_html(private)
     (ANNOTATION_ROOT / "review.html").write_text(html, encoding="utf8")
-    workflow = """# Annotation review workflow (private local package)\n\nOpen `review.html` in a local browser. It contains only the selected documents and proposed references, so treat it as confidential and do not commit or share it. Use the original-source link for visual verification.\n\nFor each candidate: (1) inspect the original document, (2) approve/rewrite/reject the query variants, (3) verify the exact evidence text, (4) write a concise expected answer, (5) verify original page/section/clause location where visible, and (6) record reviewer identity/date. Leave unknown metadata null. Do not set `human_verified=true` until all required fields are checked.\n\n`candidate-review.json` is the editable source. The generated page is a read-only review view; edit the JSON manually or use the fields as a checklist, then update the annotation template only after review.\n"""
+    workflow = """# Annotation review workflow (private local package)\n\nStart the loopback-only Flask interface with `flask --app app annotation-review serve --port 8765`, then open `http://127.0.0.1:8765/annotation-review/`. The interface displays the original source link, questions, proposed evidence, source location, expected answer, and current review status.\n\nFor each candidate inspect the original DOC/DOCX, correct or reject all query variants, verify evidence and answer, classify the query type, and confirm any page/section/clause/version only when visible in the source. Approving requires a reviewer ID, per-language variation checks, question/evidence relationship check, evidence check, and explicit confirmation. `Save progress` and `Skip for later` preserve resumable work.\n\n`candidate-review.json` is the immutable starting package; `review-state.json` is the private resumable interface state. Do not edit either file manually. Export only with `flask --app app annotation-review export --version gt-v1`; output stays under ignored `instance/split-evaluation/datasets/`.\n"""
     (ANNOTATION_ROOT / "README.mn.md").write_text(workflow, encoding="utf8")
     template_path = ANNOTATION_ROOT / "ground_truth_review_template.json"
     template_path.write_text(json.dumps({"schema_version": 1, "human_verified": False,

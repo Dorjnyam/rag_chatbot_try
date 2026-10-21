@@ -9,12 +9,15 @@
 | Эх баримт, асуулт, proposed evidence/answer, parser-local location | `review.html` дээр харагдана |
 | Page / verified clause / original source span / version | Боломжгүй бол null; parser block ID нь эх баримтын баталгаатай координат биш |
 | Review state | Бүгд unreviewed; human-verified 0 |
-| Review интерфейс | Read-only HTML, editable JSON нь `candidate-review.json`; form controls байхгүй |
+| Өмнөх `review.html` | Read-only static preview; form controls байхгүй |
+| Шинэ review UI | Flask `/annotation-review/`, form save/resume, per-question status, source download link; зөвхөн `127.0.0.1` дээр serve хийнэ |
 
 ## Review-ийн анхаарах зүйл
 
-HTML нь эх файлыг `file:///` холбоосоор нээдэг. Ижил Windows machine дээр файл тус бүр нээгдэхийг шалгав; browser policy өөр орчинд `file://` navigation-г хориглож болох тул эх JSON дахь `source_file` абсолют path-ийг Explorer/Word-оор нээх fallback болгоно. `candidate-review.json`-г засах, draft query/evidence-г эхтэй тулгаж accept/rewrite/reject хийх, reviewer/date тэмдэглэх workflow README-д байна.
+Өмнөх static HTML нь `file:///` холбоос ашигладаг бөгөөд 20/20 source file энэ machine дээр нээгдэж байв. Шинэ local UI нь document холбоосыг server-side allowlist ба SHA-256 шалгалтаар өгнө; хэрэглэгч source document-ийг татаж Word дээр нээнэ.
 
-Candidate evidence/query нь автоматаар санал болгосон тул эх сурвалжтай таарч байгаа эсэх, expected answer зөв эсэх, асуулт хариулагдахуйц эсэхийг reviewer бүр шалгана. Үүнийг retrieval ground truth гэж одоо ашиглаж болохгүй. Зөвхөн шалгасан candidate-д `human_verified=true` тавина; metadata-г эхээс батлахгүй бол null хэвээр үлдээнэ.
+Candidate evidence/query нь автоматаар санал болгосон тул эх сурвалжтай таарч байгаа эсэх, expected answer зөв эсэх, асуулт хариулагдахуйц эсэхийг reviewer бүр шалгана. Шинэ UI save-progress, approve, correct, reject, skip болон resume-г дэмжинэ; approve хийхэд per-language confirmation, source/evidence check, query–evidence relationship check, reviewer ID болон explicit human confirmation шаарддаг. `candidate-review.json` immutable starting package, харин `review-state.json` private resumable state. Үүнийг retrieval ground truth гэж ашиглахын өмнө readiness CLI нь source hash, extraction evidence, query-type representativeness болон variation coverage шалгана.
+
+Retrieval readiness зөвхөн тоон count-оор нээгдэхгүй: human-verified Cyrillic/English/Latin жишээ болон requirement, exception, procedure, table fact, definition гэсэн query type бүрийн approved жишээ шаарддаг. Page/clause/version талбарыг null хэвээр үлдээж, зөвхөн source дээр reviewer баталсан үед л бүртгэнэ.
 
 Нууц баримтын нэр, текст, path, асуулт болон evidence-г энэ tracked report-д оруулаагүй. Review JSON/HTML болон frozen snapshot `instance/` доор private бөгөөд commit хийх зориулалтгүй.

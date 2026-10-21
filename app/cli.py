@@ -75,6 +75,48 @@ def register(app):
         except Exception as exc:
             raise click.ClickException(f"Overlap ablation failed: {type(exc).__name__}: {exc}") from exc
 
+    @app.cli.group("annotation-review")
+    def annotation_review_cli():
+        """Review and export private, human-verified Split evaluation annotations."""
+
+    @annotation_review_cli.command("serve")
+    @click.option("--port", type=click.IntRange(1024, 65535), default=8765, show_default=True)
+    def annotation_review_serve(port):
+        from .annotation_review import load_state
+        review_root = Path(current_app.instance_path) / "split-evaluation" / "annotation-review"
+        try:
+            state = load_state(review_root)
+        except Exception as exc:
+            raise click.ClickException(f"Private review package бэлэн биш байна: {type(exc).__name__}") from exc
+        click.echo(f"Local annotation review: http://127.0.0.1:{port}/annotation-review/ ({len(state['candidates'])} candidates)")
+        current_app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False, threaded=True)
+
+    @annotation_review_cli.command("status")
+    def annotation_review_status():
+        from .annotation_review import readiness_report
+        instance = Path(current_app.instance_path)
+        root = Path(__file__).resolve().parents[1]
+        review_root = instance / "split-evaluation" / "annotation-review"
+        try:
+            result = readiness_report(review_root, root / "instance" / "uploads", instance / "split-evaluation")
+            click.echo(json.dumps(result, ensure_ascii=True, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Review status шалгалт амжилтгүй: {type(exc).__name__}") from exc
+
+    @annotation_review_cli.command("export")
+    @click.option("--version", "dataset_version", required=True, help="Immutable export version, e.g. v1.")
+    def annotation_review_export(dataset_version):
+        from .annotation_review import export_dataset
+        instance = Path(current_app.instance_path)
+        root = Path(__file__).resolve().parents[1]
+        try:
+            result = export_dataset(instance / "split-evaluation" / "annotation-review",
+                root / "instance" / "uploads", instance / "split-evaluation",
+                instance / "split-evaluation" / "datasets", dataset_version)
+            click.echo(json.dumps(result, ensure_ascii=True, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Verified dataset export амжилтгүй: {type(exc).__name__}: {exc}") from exc
+
     @app.cli.group("migrate-indexes")
     def migrate_indexes():
         """Move active documents between embedding providers without deleting old indexes."""
