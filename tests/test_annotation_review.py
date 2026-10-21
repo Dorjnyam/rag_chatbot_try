@@ -113,6 +113,7 @@ def test_flask_review_route_saves_and_explicitly_approves(tmp_path, monkeypatch)
     page = client.get("/annotation-review/")
     assert page.status_code == 200
     assert b"NOT READY" in page.data
+    assert "талбаруудыг хэрхэн бөглөх" in page.get_data(as_text=True).lower()
     assert b"synthetic immutable original source" in client.get("/annotation-review/source/DOC0001-Q01").data
     with client.session_transaction() as session:
         csrf = session["csrf"]
@@ -131,3 +132,34 @@ def test_flask_review_route_saves_and_explicitly_approves(tmp_path, monkeypatch)
     assert record["reviewer_id"] == "human-reviewer"
     forbidden = client.get("/annotation-review/", environ_base={"REMOTE_ADDR": "192.168.1.20"})
     assert forbidden.status_code == 403
+
+
+def test_annotation_source_preview_converts_docx_and_serves_inline_cached_pdf(tmp_path, monkeypatch):
+    from app import create_app
+    import app.routes.annotation_review as route_module
+    import app.services.preview_worker as worker
+
+    review_root, uploads, snapshot_root, _, _ = _fixture_package(tmp_path)
+    monkeypatch.setattr(route_module, "_paths", lambda: (review_root, uploads, snapshot_root))
+    calls = []
+
+    def fake_convert(source, output_file, executable, timeout):
+        calls.append((source, executable, timeout))
+        output_file.write_bytes(b"%PDF-1.7 preview bytes")
+        return output_file
+
+    monkeypatch.setattr(worker, "_convert", fake_convert)
+    app = create_app({"TESTING": True, "DATA_DIR": tmp_path / "app-data", "SECRET_KEY": "preview-test",
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:"})
+    app.instance_path = str(tmp_path / "review-instance")
+    client = app.test_client()
+    url = "/annotation-review/preview/DOC0001-Q01"
+    first = client.get(url)
+    second = client.get(url)
+    assert first.status_code == 200
+    assert first.mimetype == "application/pdf"
+    assert first.headers["Content-Disposition"].startswith("inline")
+    assert first.headers["Content-Security-Policy"].find("frame-ancestors 'self'") >= 0
+    assert first.data.startswith(b"%PDF")
+    assert second.data == first.data
+    assert len(calls) == 1

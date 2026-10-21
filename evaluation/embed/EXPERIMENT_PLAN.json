@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "phase": "Phase 3 - Embed",
+  "status": "prepared_not_started",
+  "current_runtime": {
+    "provider": "openai",
+    "embedding_model": "text-embedding-3-small",
+    "dimensions": 1536,
+    "chunker": "A0 characters-v1",
+    "chunk_size": 1800,
+    "chunk_overlap": 250
+  },
+  "ground_truth": {
+    "dataset_version": "gt-v1",
+    "approved_questions": 2,
+    "verified_query_variations": 6,
+    "retrieval_evaluation_ready": false
+  },
+  "smoke_preflight": {
+    "documents": 2,
+    "chunks": 60,
+    "document_input_tokens_estimate": 74126,
+    "query_input_tokens_estimate": 125,
+    "total_input_tokens_estimate": 74251,
+    "embedding_request_estimate_upper_bound": 14,
+    "raw_vector_payload_bytes_estimate": 368640,
+    "model_price_usd_per_million_tokens_reference": 0.02,
+    "estimated_embedding_cost_usd": 0.00148502,
+    "api_calls_executed": 0,
+    "production_postgres_or_chroma_touched": false
+  },
+  "sequence": [
+    {
+      "id": "E0",
+      "name": "Offline preflight",
+      "status": "completed",
+      "command": ".venv\\Scripts\\python.exe -m flask --app app benchmark-embed prepare-smoke",
+      "checks": ["dataset hash", "snapshot/document identity", "artifact hash", "A0 chunks", "query token counts", "batch estimate", "evidence-to-parser-block mapping", "missing source metadata"]
+    },
+    {
+      "id": "E0-MOCK",
+      "name": "Isolated Chroma mechanics with deterministic vectors",
+      "status": "completed_mock_only",
+      "command": ".venv\\Scripts\\python.exe -m flask --app app benchmark-embed prepare-smoke --local-mock",
+      "checks": ["1536-dimensional Chroma vectors", "isolated collection", "chunk IDs", "metadata/source reference roundtrip", "known-target oracle retrieval", "production isolation"],
+      "semantic_quality_claim": false
+    },
+    {
+      "id": "E1",
+      "name": "OpenAI embedding compatibility smoke",
+      "status": "awaiting_user_approval",
+      "command": ".venv\\Scripts\\python.exe -m flask --app app benchmark-embed prepare-smoke --confirm-paid",
+      "checks": ["actual provider vector dimensions", "isolated Chroma storage", "six verified variation query results", "evidence exact-match diagnostics", "source references", "actual token usage", "latency and errors"],
+      "estimated_input_tokens": 74251,
+      "estimated_cost_usd": 0.00148502,
+      "do_not_execute_without_explicit_approval": true,
+      "retrieval_quality_benchmark": false
+    },
+    {
+      "id": "E2",
+      "name": "Formal embedding model comparison",
+      "status": "deferred",
+      "entry_criteria": ["representative human-verified query/evidence sample", "fixed A0 chunks and query split", "per-model isolated collection", "cost estimate and approval"],
+      "metrics": ["Evidence Recall@k", "MRR", "nDCG@k", "evidence-span coverage", "latency", "usage/cost", "index bytes"]
+    }
+  ],
+  "notes": [
+    "Do not change production embedding configuration.",
+    "Mock-vector results validate mechanics only and must not be used as retrieval-quality results.",
+    "gt-v1 has only two approved questions; retrieval evaluation remains NOT READY."
+  ]
+}

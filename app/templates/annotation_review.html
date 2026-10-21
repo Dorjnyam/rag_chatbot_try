@@ -11,7 +11,17 @@
   <header>
     <p class="eyebrow">LOCAL · PRIVATE · SPLIT EVALUATION</p>
     <h1>Human annotation review</h1>
-    <p>Энэ interface зөвхөн localhost дээр ажиллана. Бүх save нь private <code>instance/</code> дотор хадгалагдана.</p>
+    <p>Зөвхөн localhost дээр ажиллана. Save болон preview cache нь private <code>instance/</code> дотор байна.</p>
+    <details class="help-card"><summary>Талбаруудыг хэрхэн бөглөх вэ? Жишээ харах</summary>
+      <p><b>Жишээ эх:</b> “Ажилтан ээлжийн амралт авах хүсэлтээ ажлын 5 өдрийн өмнө гаргана.”</p>
+      <p><b>Question:</b> “Амралтын хүсэлтийг хэд хоногийн өмнө гаргах вэ?” гэж асуултыг бичнэ. Дараагийн 3 асуултын хайрцаг нь ижил утгыг Монгол кирилл, English, Монгол Latin-аар илэрхийлнэ.</p>
+      <p><b>Question variation-ийн 3 checkbox:</b> тухайн хэл дээрх асуулт зөв, эх асуулттай ижил утгатай эсэхийг тус бүрээр нь тэмдэглэнэ. Энэ нь evidence-ийн checkbox биш. Батлахад Монгол кирилл заавал шалгагдсан, мөн дор хаяж нэг English/Latin хувилбар шалгагдсан байх ёстой.</p>
+      <p><b>Evidence:</b> асуултад хариулах эх баримтын яг тэр өгүүлбэр/хэсгийг оруулна. Эхтэй таарч байгааг эхний checkbox-оор батална. Хариулт зөвхөн энэ хэсгээс гарах эсэхийг хоёр дахь checkbox-оор тусад нь батална.</p>
+      <p><b>Expected answer:</b> evidence-ээс гарах товч, зөв хариулт. Жишээ: “Ажлын 5 өдрийн өмнө.”</p>
+      <p><b>Query type:</b> асуултын зорилгыг сонгоно: Requirement=шаардлага, Exception=үл хамаарах тохиолдол, Procedure=алхам/журам, Table fact=хүснэгтийн утга, Definition=нэр томьёоны тодорхойлолт. Жишээ нь дээрх асуулт Requirement.</p>
+      <p><b>Source reference:</b> menu-гээс evidence хаана байгааг сонгоод, хажууд нь эх дээр харагдаж байгаа гарчиг/хүснэгтийн нэр зэрэг тайлбарыг бичнэ. Жишээ: “Хэсгийн гарчиг: Ээлжийн амралт”. Page/Clause талбарыг зөвхөн эх дээр дугаар нь үнэхээр харагдаж байвал бөглөнө; үгүй бол хоосон үлдээнэ.</p>
+      <p><b>Reviewer ID:</b> танихад хангалттай, тогтвортой богино нэр/код (жишээ <code>reviewer-01</code> эсвэл өөрийн initials). Нууц үг, имэйл хэрэггүй. Сүүлийн confirmation checkbox нь эх болон annotation-ийг өөрөө шалгаснаа, яг энэ үйлдлийг зөвшөөрч байгааг батална.</p>
+    </details>
   </header>
 
   <section class="summary" aria-label="Review progress">
@@ -45,70 +55,79 @@
   </nav>
 
   <section class="source-card">
-    <div><h2>Original source</h2><p>Document identity: <code>{{ candidate.doc_id }}</code> · Frozen source SHA-256: <code>{{ candidate.source_sha256 }}</code></p></div>
-    <a class="button secondary" href="{{ url_for('annotation_review.source', candidate_id=candidate.candidate_id) }}">Эх баримтыг нээх / татах</a>
+    <div><h2>Эх баримтын preview</h2><p>Document identity: <code>{{ candidate.doc_id }}</code> · {{ candidate.source_file.rsplit('/', 1)[-1].rsplit('\\', 1)[-1] }}</p></div>
+    <a class="button secondary" href="{{ url_for('annotation_review.source', candidate_id=candidate.candidate_id) }}">Татаж авах</a>
   </section>
+  <section class="document-preview"><iframe title="Эх баримтын PDF preview" src="{{ url_for('annotation_review.source_preview', candidate_id=candidate.candidate_id) }}"></iframe>
+    <p>DOC/DOCX preview PDF болгон түр хөрвүүлэгдэнэ. Хэрэв preview гарахгүй бол татаж авч нээнэ үү. Хөрвүүлэлт нь эх файлыг өөрчлөхгүй.</p></section>
 
   <form method="post" action="{{ url_for('annotation_review.update', candidate_id=candidate.candidate_id, next=next_id or candidate.candidate_id) }}">
     <input type="hidden" name="csrf" value="{{ session.get('csrf', '') }}">
 
     <section class="card">
-      <h2>Question variations</h2>
+      <h2>1. Асуултын хэлний хувилбарууд</h2>
+      <p class="field-help">Ижил асуултын утгыг өөр хэлбэрээр бичнэ. Хувилбар бүрийн checkbox зөв орчуулга/хөрвүүлэг гэдгийг тусад нь батална.</p>
       {% for language in languages %}
       <label>{{ {"mn_cyrl":"Mongolian Cyrillic", "en":"English", "mn_latn_draft":"Mongolian Latin transliteration"}[language] }}
         <textarea name="question_{{ language }}" rows="3">{{ candidate.question_variants.get(language, "") }}</textarea>
       </label>
       <label class="check"><input type="checkbox" name="verified_{{ language }}" value="yes" {% if candidate.verified_variations.get(language) %}checked{% endif %}>
-        Энэ query variation-г reviewer шалгаж, approved хувилбар болгон ашиглахыг баталсан.</label>
+        Энэ хэл дээрх асуултыг шалгаж, ижил утгатай гэж баталсан.</label>
       {% endfor %}
-      <label>Query type
+      <label>Query type <span class="field-help">Асуулт юу асууж байгааг ангилна; зөв хариултыг сонгохгүй.</span>
         <select name="query_type"><option value="">-- Reviewer ангилна --</option>
-          {% for item in query_types %}<option value="{{ item }}" {% if candidate.query_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+          {% for item in query_types %}<option value="{{ item }}" {% if candidate.query_type == item %}selected{% endif %}>{{ {"requirement":"Requirement — заавал хийх зүйл", "exception":"Exception — үл хамаарах нөхцөл", "procedure":"Procedure — яаж хийх алхам", "table_fact":"Table fact — хүснэгтийн мэдээлэл", "definition":"Definition — нэр томьёоны утга", "other":"Other — бусад"}[item] }}</option>{% endfor %}
         </select>
       </label>
     </section>
 
     <section class="card">
-      <h2>Evidence ба expected answer</h2>
+      <h2>2. Evidence ба expected answer</h2>
       <label>Proposed evidence (unverified; эх баримттай тулгана)
         <pre>{{ candidate.proposed_evidence_text }}</pre>
       </label>
-      <label>Reviewer-verified exact evidence text
+      <label>Evidence text <span class="field-help">Асуултын хариуг нотлох эхийн хэсэг. Доорх draft-ийг эхтэй тулгаад засаж болно.</span>
         <textarea name="evidence_text" rows="8" required>{{ candidate.evidence_text }}</textarea>
       </label>
-      <label>Expected answer
+      <label>Expected answer <span class="field-help">Evidence-ээс шууд гаргах ёстой товч хариулт.</span>
         <textarea name="expected_answer" rows="4" required>{{ candidate.expected_answer }}</textarea>
       </label>
       <label class="check"><input type="checkbox" name="evidence_matches_original" value="yes" {% if candidate.evidence_matches_original %}checked{% endif %}>
-        Evidence text-ийг original document дээр нүдээр шалгасан.</label>
+        Checkbox 1: Evidence-ийн үг эх баримт дээр яг таарч байгааг шалгасан.</label>
       <label class="check"><input type="checkbox" name="question_evidence_relation_confirmed" value="yes" {% if candidate.question_evidence_relation_confirmed %}checked{% endif %}>
-        Асуулт нь энэ evidence-ээс хариулагдахыг бие даан шалгасан.</label>
+        Checkbox 2: Асуултад энэ evidence дангаараа хариулж байгааг шалгасан.</label>
     </section>
 
     <section class="card">
-      <h2>Source reference</h2>
-      <p>Parser-local block нь эх баримтын баталгаатай page/clause биш. Зөвхөн visual source-оос баталсан metadata-г бичнэ.</p>
+      <h2>3. Эх доторх байршил (Source reference)</h2>
+      <p>Parser-local block нь эх баримтын баталгаатай page/clause биш. Доорх menu нь аль төрлийн anchor болохыг заана; яг харагдах хэсгийг л сонгож/бичнэ.</p>
       <p>Proposed parser location: <code>{{ candidate.source_location }}</code></p>
-      <label>Баталгаажсан source reference / span тайлбар
-        <textarea name="source_reference" rows="3">{{ candidate.source_reference }}</textarea>
-      </label>
+      <div class="grid">
+        <label>Байршлын төрөл
+          <select name="source_reference_kind"><option value="">-- Байршил тодорхойгүй --</option>
+            {% for item in ["Page", "Section heading", "Clause", "Table", "Paragraph", "Other visible anchor"] %}<option value="{{ item }}" {% if source_reference_kind == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Эх дээр харагдах таних тэмдэг <span class="field-help">Ж: “Ээлжийн амралт” гарчиг, “Хүснэгт 2”. Олдохгүй бол хоосон үлдээнэ.</span>
+          <input name="source_reference_detail" value="{{ source_reference_detail }}" placeholder="Зөвхөн эхээс харсан утга">
+        </label>
       <div class="grid">
         {% for field, label in [("page","Page"),("section","Section"),("clause_id","Clause ID"),("document_version","Document version")] %}
-        <label>{{ label }} <input name="location_{{ field }}" value="{{ candidate.source_location.get(field) or "" }}"></label>
+        <label>{{ label }} <input name="location_{{ field }}" value="{{ candidate.source_location.get(field) or "" }}" placeholder="Эх дээр байхгүй бол хоосон"></label>
         {% endfor %}
       </div>
       <label class="check"><input type="checkbox" name="source_location_verified" value="yes" {% if candidate.source_location_verified %}checked{% endif %}>
-        Дээрх source anchor болон бөглөсөн page/section/clause/version-ийг эх хувилбараас шалгасан.</label>
+        Source reference болон бөглөсөн дугаар/гарчиг бүрийг эх хувилбараас харж баталсан.</label>
     </section>
 
     <section class="card reviewer">
       <h2>Reviewer confirmation</h2>
-      <label>Reviewer ID <input name="reviewer_id" value="{{ candidate.reviewer_id or "" }}" maxlength="120" autocomplete="off"></label>
+      <label>Reviewer ID <span class="field-help">Таныг review бүрт ижилхэн таних код; жишээ <code>reviewer-01</code> эсвэл initials.</span><input name="reviewer_id" value="{{ candidate.reviewer_id or "" }}" maxlength="120" autocomplete="off" placeholder="reviewer-01"></label>
       <label>Татгалзах шалтгаан (reject үйлдэлд шаардлагатай)
         <input name="rejection_reason" value="{{ candidate.rejection_reason or "" }}" maxlength="1000">
       </label>
       <label class="check confirm"><input type="checkbox" name="human_confirmation" value="yes">
-        Би original source-ийг шалгаж, энэ үйлдлийг зориуд баталж байна. Codex-ийн draft автоматаар verified болохгүй.</label>
+        Би эх баримтыг өөрөө шалгаж, энэ approve/reject үйлдлийг зориуд баталж байна. Codex-ийн draft өөрөө verified болохгүй.</label>
       <div class="actions">
         <button type="submit" name="action" value="save" class="secondary">Save progress</button>
         <button type="submit" name="action" value="skip" class="secondary">Skip for later</button>

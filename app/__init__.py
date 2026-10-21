@@ -89,7 +89,8 @@ def create_app(test_config=None):
     @app.after_request
     def headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        frame_ancestors = "'self'" if request.endpoint == "annotation_review.source_preview" else "'none'"
+        response.headers["Content-Security-Policy"] = f"default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors {frame_ancestors}; base-uri 'self'; form-action 'self'"
         return response
 
     return app

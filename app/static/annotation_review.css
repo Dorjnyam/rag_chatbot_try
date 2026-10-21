@@ -4,6 +4,14 @@ body { margin: 0; }
 main { width: min(1080px, calc(100% - 32px)); margin: 28px auto 64px; }
 header, .card, .summary, .source-card { background: #fff; border: 1px solid #d7e0e8; border-radius: 12px; padding: 22px; margin-bottom: 16px; }
 header { border-top: 5px solid #2765a3; }
+.help-card { margin-top: 16px; padding: 14px 16px; border: 1px solid #b9cddd; border-radius: 8px; background: #f4f9fc; }
+.help-card summary { cursor: pointer; color: #175e9b; font-weight: 700; }
+.help-card p { margin: 12px 0 0; line-height: 1.5; }
+.document-preview { margin: -8px 0 18px; padding: 10px; background: #e7edf2; border: 1px solid #d7e0e8; border-radius: 10px; }
+.document-preview iframe { display: block; width: 100%; height: min(78vh, 900px); min-height: 520px; border: 0; background: white; }
+.document-preview p, .field-help { color: #526477; font-size: .9rem; font-weight: 400; }
+.document-preview p { margin: 8px 4px 2px; }
+.field-help { display: block; margin: 4px 0; line-height: 1.4; }
 h1 { margin: 4px 0 8px; font-size: 1.9rem; }
 h2 { margin: 0 0 16px; font-size: 1.2rem; }
 .eyebrow { color: #56718c; font-size: .75rem; letter-spacing: .1em; font-weight: 700; }

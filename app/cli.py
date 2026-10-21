@@ -9,6 +9,64 @@ from .extensions import db
 
 
 def register(app):
+    @app.cli.group("benchmark-embed")
+    def benchmark_embed():
+        """Prepare a private Phase 3 smoke test; paid calls require an explicit flag."""
+
+    @benchmark_embed.command("prepare-smoke")
+    @click.option("--local-mock", is_flag=True, help="Run Chroma mechanics with deterministic fake vectors; no API calls.")
+    @click.option("--confirm-paid", is_flag=True, help="Run the bounded OpenAI smoke test after reviewing the printed estimate.")
+    def benchmark_embed_prepare_smoke(local_mock, confirm_paid):
+        if local_mock and confirm_paid:
+            raise click.ClickException("Choose either --local-mock or --confirm-paid.")
+        from .embed_smoke import (prepare_smoke, write_plan, run_isolated_smoke,
+            deterministic_mock_vectors)
+        from .services.openai_provider import OpenAIProvider
+        config = current_app.config
+        try:
+            plan, chunks_by_doc, query_inputs, evidence = prepare_smoke(Path(config["DATA_DIR"]), config)
+            plan_path = write_plan(plan, Path(config["DATA_DIR"]))
+            click.echo(json.dumps({"plan": str(plan_path), "plan_id": plan["plan_id"],
+                "verified_questions": plan["approved_question_count"],
+                "query_variations": plan["verified_query_variation_count"],
+                "documents": plan["document_count"], "chunks": plan["document_chunk_count"],
+                "model": plan["model"], "dimensions": plan["dimensions"],
+                "estimated_input_tokens": plan["total_embedding_input_tokens_estimate"],
+                "estimated_cost_usd": plan["estimated_embedding_cost_usd"],
+                "max_embedding_requests": plan["max_request_count_estimate"],
+                "mode": "local_mock" if local_mock else "paid_openai" if confirm_paid else "plan_only"},
+                ensure_ascii=False, indent=2))
+            if not local_mock and not confirm_paid:
+                click.echo("No embedding API, PostgreSQL, or Chroma call was made. Review the estimate before choosing an execution mode.")
+                return
+            client = None
+            try:
+                if local_mock:
+                    embedder = lambda texts, task: deterministic_mock_vectors(texts, task, plan["dimensions"])
+                else:
+                    if not config.get("OPENAI_API_KEY"):
+                        raise ValueError("OPENAI_API_KEY is not configured; no API request was sent.")
+                    client = OpenAIProvider()
+                    embedder = client.embed
+                result = run_isolated_smoke(plan, chunks_by_doc, query_inputs,
+                    Path(config["DATA_DIR"]), embedder, config["EMBEDDING_BATCH_SIZE"])
+                result.update(mode="local_mock" if local_mock else "paid_openai",
+                    actual_embedding_usage=(client.usage.get("embedding", {}) if client else {"api_calls": 0}),
+                    api_attempts=(client.attempts if client else 0),
+                    result_recorded_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(timespec="seconds"))
+                result_path = Path(result["isolated_chroma_path"]).parent / "result.json"
+                temporary = result_path.with_suffix(".json.tmp")
+                temporary.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
+                temporary.replace(result_path)
+                click.echo(json.dumps({"result": str(result_path), "indexed_chunks": result["indexed_chunk_count"],
+                    "dimensions": result["embedding_dimensions"], "semantic_quality_measured": False,
+                    "production_data_touched": False}, ensure_ascii=False, indent=2))
+            finally:
+                if client:
+                    client.close()
+        except Exception as exc:
+            raise click.ClickException(f"Embedding smoke preparation/run failed: {type(exc).__name__}: {exc}") from exc
+
     @app.cli.group("benchmark-split")
     def benchmark_split():
         """Freeze and measure Split inputs offline without DB, Chroma, or provider calls."""
