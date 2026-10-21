@@ -145,16 +145,67 @@ def _recursive_token_spans(text, enc, limit):
     return spans
 
 
-def _experimental_chunks(blocks, strategy, enc, version_id):
+def _validate_overlap_config(size, overlap):
+    if not isinstance(size, int) or size <= 0:
+        raise ValueError("Chunk size must be a positive integer.")
+    if not isinstance(overlap, int) or overlap < 0 or overlap >= size:
+        raise ValueError("Overlap must be an integer in [0, size).")
+
+
+def _token_overlap_spans(text, enc, limit, overlap, recursive=False):
+    """Token-budget windows with source-character offsets and real overlap."""
+    _validate_overlap_config(limit, overlap)
+    if overlap == 0:
+        return _recursive_token_spans(text, enc, limit) if recursive else _fixed_token_spans(text, enc, limit)
+    base = _recursive_token_spans(text, enc, limit - overlap) if recursive else _fixed_token_spans(text, enc, limit - overlap)
+    if not base:
+        return []
+    spans = [base[0]]
+    for lo, hi in base[1:]:
+        prior_lo, prior_hi = spans[-1]
+        # Binary-search the source character edge for an overlap near the requested
+        # token count, then advance it only as needed to fit the full next window.
+        left, right = prior_lo, prior_hi
+        while left < right:
+            mid = (left + right) // 2
+            if len(enc.encode(text[mid:prior_hi])) <= overlap:
+                right = mid
+            else:
+                left = mid + 1
+        candidate = left
+        left, right = candidate, prior_hi
+        while left < right:
+            mid = (left + right) // 2
+            if len(enc.encode(text[mid:hi])) <= limit:
+                right = mid
+            else:
+                left = mid + 1
+        candidate = left
+        if candidate >= hi:
+            raise ValueError("Unable to preserve a non-empty overlap within token budget.")
+        spans.append((candidate, hi))
+    # Extend the final span to include trailing source omitted by token edge rounding.
+    if spans[-1][1] < len(text):
+        lo, _ = spans[-1]
+        end = len(text)
+        while end > lo and len(enc.encode(text[lo:end])) > limit:
+            end -= 1
+        spans[-1] = (lo, end)
+    return spans
+
+
+def _experimental_chunks(blocks, strategy, enc, version_id, *, size=None, overlap=0, config_id=None):
     if strategy == "characters-v1":
-        return current_chunk(blocks, {"chunk_size": 1800, "chunk_overlap": 0}, version_id)
+        return current_chunk(blocks, {"chunk_size": size or 1800, "chunk_overlap": overlap}, version_id)
+    size = size or 512
+    _validate_overlap_config(size, overlap)
     output = []
-    config = {"strategy": strategy, "chunk_size": 512, "chunk_overlap": 0,
+    config = {"strategy": strategy, "chunk_size": size, "chunk_overlap": overlap,
               "tokenizer": "cl100k_base"}
     for group in _groups(blocks):
         text = "\n\n".join(b.get("text", "") for b in group)
-        windows = (_fixed_token_spans(text, enc, 512) if strategy == "fixed-token-v1"
-                   else _recursive_token_spans(text, enc, 512))
+        windows = (_token_overlap_spans(text, enc, size, overlap, False) if strategy == "fixed-token-v1"
+                   else _token_overlap_spans(text, enc, size, overlap, True))
         block_spans, cursor = [], 0
         for block in group:
             lo, hi = cursor, cursor + len(block.get("text", ""))
@@ -196,7 +247,8 @@ def _worker_document(payload):
             if iteration == 1:
                 cpu_batch_start = time.process_time()
             version_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"split:{version_root}:{doc_id}:{name}"))
-            chunks = _experimental_chunks(blocks, spec["strategy"], enc, version_id)
+            chunks = _experimental_chunks(blocks, spec["strategy"], enc, version_id,
+                size=spec["size"], overlap=spec["overlap"], config_id=name)
             elapsed = (time.perf_counter() - started) * 1000
             py_peak = max(py_peak, tracemalloc.get_traced_memory()[1])
             tracemalloc.stop()
@@ -208,7 +260,7 @@ def _worker_document(payload):
         cpu_per_iteration = ((time.process_time() - cpu_batch_start) * 1000 / ITERATIONS
                              if cpu_batch_start is not None else None)
         metrics = _document_metrics(doc_id, blocks, outputs, fitted, enc,
-            1800 if name == "A1" else 512, 0)
+            spec["size"], spec["overlap"])
         results[name] = {"metrics": metrics, "chunking_p50_ms": statistics.median(timings),
             "chunking_p95_ms": _percentile(timings, .95), "cpu_p50_ms": cpu_per_iteration,
             "cpu_p95_ms": cpu_per_iteration, "python_peak_bytes": py_peak,
@@ -226,8 +278,8 @@ def _worker_document(payload):
             "worker_peak_rss_bytes": max([value for value in (rss_before, _rss_bytes()) if value is not None], default=None)}
 
 
-def _run_worker(doc_id, blocks, snapshot_id):
-    payload = {"doc_id": doc_id, "blocks": blocks, "strategies": list(EXPERIMENTS), "snapshot_id": snapshot_id}
+def _run_worker(doc_id, blocks, snapshot_id, strategies=None):
+    payload = {"doc_id": doc_id, "blocks": blocks, "strategies": list(strategies or EXPERIMENTS), "snapshot_id": snapshot_id}
     process = subprocess.run([sys.executable, "-m", "app.split_experiment_worker"],
         input=json.dumps(payload, ensure_ascii=False), text=True, encoding="utf8",
         capture_output=True, cwd=ROOT)
@@ -329,6 +381,118 @@ def run_a1_a3(snapshot_id=SNAPSHOT_ID):
     _write_comparison_markdown(stem, report)
     _write_comparison_csv(stem, report)
     return {"run_id": run_id, "report_stem": stem, "summary": report["summary"], "strategies": strategies}
+
+
+def run_overlap_ablation(snapshot_id=SNAPSHOT_ID):
+    """Run positive-overlap variants; zero-overlap A2/A3 remain the frozen baseline."""
+    snap_dir = SNAPSHOT_ROOT / snapshot_id
+    manifest = json.loads((snap_dir / "manifest.json").read_text(encoding="utf8"))
+    if snapshot_id != SNAPSHOT_ID or len(manifest.get("records", [])) != 154:
+        raise ValueError("Verified frozen corpus is unavailable; no parser rerun is performed.")
+    enc = _tokenizer()
+    specs = tuple({"id": f"O{alg}-{overlap}", "strategy": strategy, "size": 512,
+        "overlap": overlap, "overlap_percent": round(overlap / 512 * 100, 2)}
+        for alg, strategy in (("F", "fixed-token-v1"), ("R", "recursive-token-v1"))
+        for overlap in (51, 77, 128))
+    started = time.perf_counter()
+    documents = []
+    for record in manifest["records"]:
+        if record["load_status"] != "success":
+            documents.append({"doc_id": record["doc_id"], "status": "load_failed"})
+            continue
+        path = snap_dir / record["artifact"]
+        if not path.is_file() or _sha(path) != record.get("artifact_sha256"):
+            raise ValueError(f"Frozen artifact integrity check failed for {record['doc_id']}.")
+        artifact = json.loads(path.read_text(encoding="utf8"))
+        if artifact.get("parser") != PARSER_REVISION:
+            raise ValueError("Parser identity mismatch; refusing to rerun extraction.")
+        documents.append(_run_worker(record["doc_id"], artifact["blocks"], snapshot_id, specs))
+    wall = time.perf_counter() - started
+    successful = [doc for doc in documents if doc.get("status") not in {"split_failed", "load_failed"}]
+    strategies = {}
+    for spec in specs:
+        name = spec["id"]
+        rows = [doc["strategies"][name] for doc in successful]
+        metrics = [row["metrics"] for row in rows]
+        tokens = [x["tokens"] for row in rows for x in row["chunk_summaries"]]
+        strategies[name] = {"config": spec, "documents": len(rows),
+            "chunk_count": sum(m["raw_chunk_count"] for m in metrics),
+            "token_distribution": {"median": statistics.median(tokens), "p95": _percentile(tokens,.95), "max": max(tokens)},
+            "coverage_median": statistics.median(m["coverage_ratio"] for m in metrics if m["coverage_ratio"] is not None),
+            "nonwhitespace_loss": sum(m["uncovered_nonwhitespace_characters"] for m in metrics),
+            "token_inflation_median": statistics.median(m["token_inflation_ratio"] for m in metrics),
+            "overlap_chars": sum(m["source_span_overlap_characters"] for m in metrics),
+            "actual_overlap_tokens_estimate": sum(m["actual_overlap_tokens_estimate"] for m in metrics),
+            "clause_fragmentation_heuristic": sum(m["clause_fragmentation_count_heuristic"] for m in metrics),
+            "clause_denominator_heuristic": sum(m["clause_fragmentation_denominator_heuristic"] for m in metrics),
+            "sentence_boundary_heuristic": sum(m["sentence_boundary_violations_heuristic"] for m in metrics),
+            "table_cuts_heuristic": sum(m["partial_table_chunk_count"] for m in metrics),
+            "chunking_p50_ms": statistics.median(row["chunking_p50_ms"] for row in rows),
+            "chunking_p95_ms": _percentile([row["chunking_p50_ms"] for row in rows],.95),
+            "python_peak_p95_bytes": _percentile([row["python_peak_bytes"] for row in rows],.95),
+            "estimated_embedding_input_tokens": sum(tokens), "api_calls": 0,
+            "human_accuracy": None}
+    report = {"schema_version": 1, "run_id": str(uuid.uuid4()), "snapshot_id": snapshot_id,
+        "dataset_sha256": manifest["dataset_sha256"], "parser_revision": PARSER_REVISION,
+        "tokenizer": {"name":"cl100k_base", "version":importlib.metadata.version("tiktoken")},
+        "reused_zero_overlap_baseline": {"report":"split-a1-a3-ecf27e9c.json", "strategies":["A2","A3"], "rerun":False},
+        "summary":{"documents":len(successful),"load_failures":3,"wall_seconds":round(wall,3),"api_calls":0},
+        "strategies":strategies,"human_verified_references":0,
+        "retrieval_metrics":{"evidence_recall_at_k":None,"mrr":None,"ndcg_at_k":None}}
+    baseline_path = PUBLIC_ROOT / "split-a1-a3-ecf27e9c.json"
+    if baseline_path.is_file():
+        baseline_report = json.loads(baseline_path.read_text(encoding="utf8"))
+        report["zero_overlap_baseline"] = {name: baseline_report["strategies"][name]
+            for name in ("A2", "A3")}
+    stem = f"split-overlap-{report['run_id'][:8]}"
+    PUBLIC_ROOT.mkdir(parents=True,exist_ok=True)
+    (PUBLIC_ROOT/f"{stem}.json").write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding="utf8")
+    with (PUBLIC_ROOT/f"{stem}.csv").open("w", encoding="utf8", newline="") as handle:
+        fields = ("strategy", "algorithm", "overlap_tokens", "chunks", "token_median", "token_p95", "token_max",
+            "coverage_median", "nonwhitespace_loss", "token_inflation_median", "overlap_characters",
+            "overlap_tokens_estimate", "clause_fragmentation_heuristic", "sentence_boundary_heuristic",
+            "table_cuts_heuristic", "chunking_p50_ms", "chunking_p95_ms", "python_peak_p95_bytes")
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for name, value in strategies.items():
+            dist = value["token_distribution"]
+            writer.writerow({"strategy":name,"algorithm":value["config"]["strategy"],
+                "overlap_tokens":value["config"]["overlap"],"chunks":value["chunk_count"],
+                "token_median":dist["median"],"token_p95":dist["p95"],"token_max":dist["max"],
+                "coverage_median":value["coverage_median"],"nonwhitespace_loss":value["nonwhitespace_loss"],
+                "token_inflation_median":value["token_inflation_median"],"overlap_characters":value["overlap_chars"],
+                "overlap_tokens_estimate":value["actual_overlap_tokens_estimate"],
+                "clause_fragmentation_heuristic":value["clause_fragmentation_heuristic"],
+                "sentence_boundary_heuristic":value["sentence_boundary_heuristic"],"table_cuts_heuristic":value["table_cuts_heuristic"],
+                "chunking_p50_ms":value["chunking_p50_ms"],"chunking_p95_ms":value["chunking_p95_ms"],
+                "python_peak_p95_bytes":value["python_peak_p95_bytes"]})
+        for name, value in report.get("zero_overlap_baseline", {}).items():
+            dist = value["chunk_token_distribution"]
+            writer.writerow({"strategy":name,"algorithm":value["config"]["strategy"],"overlap_tokens":0,
+                "chunks":value["chunk_count"],"token_median":dist["median"],"token_p95":dist["p95"],
+                "token_max":dist["max"],"coverage_median":value["coverage_ratio_median"],
+                "nonwhitespace_loss":value["uncovered_nonwhitespace_characters"],
+                "token_inflation_median":value["token_inflation_ratio_median"],"overlap_characters":0,
+                "overlap_tokens_estimate":0,"clause_fragmentation_heuristic":value["clause_fragmentation_count_heuristic"],
+                "sentence_boundary_heuristic":value["sentence_boundary_violations_heuristic"],
+                "table_cuts_heuristic":value["partial_table_chunks_heuristic"],
+                "chunking_p50_ms":value["chunking_latency_p50_ms"],"chunking_p95_ms":value["chunking_latency_p95_ms"],
+                "python_peak_p95_bytes":value["worker_python_allocation_peak_p95_bytes"]})
+    lines=["# Split token overlap ablation", "", f"Run `{report['run_id']}`; snapshot `{snapshot_id}`; dataset SHA-256 `{report['dataset_sha256']}`.",
+        "Zero-overlap A2/A3-г дахин ажиллуулаагүй; өмнөх A1–A3 report-оос холбоно. Human-verified annotation 0; accuracy болон retrieval N/A. API/DB/Chroma calls: 0.", "",
+        "| Variant | Strategy | Requested overlap tokens | Chunks | Token median/P95/max | Coverage | Loss chars | Inflation | Actual span overlap chars/tokens estimate | Clause heuristic | Sentence heuristic | Table cuts | Latency P50/P95 ms | Python peak P95 |",
+        "|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for name,s in strategies.items():
+        d=s["token_distribution"]
+        lines.append(f"| {name} | {s['config']['strategy']} | {s['config']['overlap']} | {s['chunk_count']} | {d['median']} / {d['p95']} / {d['max']} | {s['coverage_median']:.4f} | {s['nonwhitespace_loss']} | {s['token_inflation_median']:.4f} | {s['overlap_chars']} / {s['actual_overlap_tokens_estimate']} | {s['clause_fragmentation_heuristic']}/{s['clause_denominator_heuristic']} heuristic | {s['sentence_boundary_heuristic']} heuristic | {s['table_cuts_heuristic']} heuristic | {s['chunking_p50_ms']:.3f}/{s['chunking_p95_ms']:.3f} | {s['python_peak_p95_bytes']} |")
+    lines += ["", "Requested overlap нь target; actual span overlap нь offset intersection. Actual overlap token estimate нь overlap characters хэсгийг тусад нь `cl100k_base`-ээр tokenize хийсэн; chunk token sum/inflation-тэй адил үзүүлэлт биш. Clause/sentence/table тоо heuristic бөгөөд human accuracy биш."]
+    if report.get("zero_overlap_baseline"):
+        lines += ["", "## Reused zero-overlap baseline", "", "| Strategy | Chunks | Token median/P95/max | Token inflation | Clause/table heuristic | Chunk latency P50/P95 ms |", "|---|---:|---|---:|---|---:|"]
+        for name, base in report["zero_overlap_baseline"].items():
+            d, cfg = base["chunk_token_distribution"], base["config"]
+            lines.append(f"| {name} | {base['chunk_count']} | {d['median']} / {d['p95']} / {d['max']} | {base['token_inflation_ratio_median']} | {base['clause_fragmentation_count_heuristic']} / {base['partial_table_chunks_heuristic']} | {base['chunking_latency_p50_ms']:.3f}/{base['chunking_latency_p95_ms']:.3f} |")
+    (PUBLIC_ROOT/f"{stem}.mn.md").write_text("\n".join(lines)+"\n",encoding="utf8")
+    return {"run_id":report["run_id"],"report_stem":stem,"summary":report["summary"],"strategies":strategies}
 
 
 def _failure_examples(docs):

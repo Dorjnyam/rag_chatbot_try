@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "run_id": "95a117e7-e306-43f1-bc34-94d0c9ee217b",
+  "snapshot_id": "real-corpus-15b24382-v1",
+  "dataset_sha256": "15b24382aeba13e943382370f5a4bfb4ede50b4033805006bad692d23bf3d56a",
+  "parser_revision": "ordered-blocks-v1",
+  "tokenizer": {
+    "name": "cl100k_base",
+    "version": "0.12.0"
+  },
+  "reused_zero_overlap_baseline": {
+    "report": "split-a1-a3-ecf27e9c.json",
+    "strategies": [
+      "A2",
+      "A3"
+    ],
+    "rerun": false
+  },
+  "summary": {
+    "documents": 151,
+    "load_failures": 3,
+    "wall_seconds": 750.524,
+    "api_calls": 0
+  },
+  "strategies": {
+    "OF-51": {
+      "config": {
+        "id": "OF-51",
+        "strategy": "fixed-token-v1",
+        "size": 512,
+        "overlap": 51,
+        "overlap_percent": 9.96
+      },
+      "documents": 151,
+      "chunk_count": 5454,
+      "token_distribution": {
+        "median": 512.0,
+        "p95": 512,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.107455429497569,
+      "overlap_chars": 339423,
+      "actual_overlap_tokens_estimate": 244896,
+      "clause_fragmentation_heuristic": 647,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 4696,
+      "table_cuts_heuristic": 2582,
+      "chunking_p50_ms": 66.10799999907613,
+      "chunking_p95_ms": 277.6884000049904,
+      "python_peak_p95_bytes": 5838017,
+      "estimated_embedding_input_tokens": 2584919,
+      "api_calls": 0,
+      "human_accuracy": null
+    },
+    "OF-77": {
+      "config": {
+        "id": "OF-77",
+        "strategy": "fixed-token-v1",
+        "size": 512,
+        "overlap": 77,
+        "overlap_percent": 15.04
+      },
+      "documents": 151,
+      "chunk_count": 5758,
+      "token_distribution": {
+        "median": 512.0,
+        "p95": 512,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.1721454969850225,
+      "overlap_chars": 542761,
+      "actual_overlap_tokens_estimate": 393297,
+      "clause_fragmentation_heuristic": 517,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 5037,
+      "table_cuts_heuristic": 2736,
+      "chunking_p50_ms": 67.98059999709949,
+      "chunking_p95_ms": 297.09490001550876,
+      "python_peak_p95_bytes": 4894236,
+      "estimated_embedding_input_tokens": 2733320,
+      "api_calls": 0,
+      "human_accuracy": null
+    },
+    "OF-128": {
+      "config": {
+        "id": "OF-128",
+        "strategy": "fixed-token-v1",
+        "size": 512,
+        "overlap": 128,
+        "overlap_percent": 25.0
+      },
+      "documents": 151,
+      "chunk_count": 6452,
+      "token_distribution": {
+        "median": 512.0,
+        "p95": 512,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.3232834078972961,
+      "overlap_chars": 1024509,
+      "actual_overlap_tokens_estimate": 742852,
+      "clause_fragmentation_heuristic": 341,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 5700,
+      "table_cuts_heuristic": 3089,
+      "chunking_p50_ms": 82.77589999488555,
+      "chunking_p95_ms": 362.30609999620356,
+      "python_peak_p95_bytes": 4892641,
+      "estimated_embedding_input_tokens": 3082875,
+      "api_calls": 0,
+      "human_accuracy": null
+    },
+    "OR-51": {
+      "config": {
+        "id": "OR-51",
+        "strategy": "recursive-token-v1",
+        "size": 512,
+        "overlap": 51,
+        "overlap_percent": 9.96
+      },
+      "documents": 151,
+      "chunk_count": 6817,
+      "token_distribution": {
+        "median": 437,
+        "p95": 508,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.1328052190121156,
+      "overlap_chars": 437433,
+      "actual_overlap_tokens_estimate": 313900,
+      "clause_fragmentation_heuristic": 197,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 3267,
+      "table_cuts_heuristic": 3076,
+      "chunking_p50_ms": 70.37840000703,
+      "chunking_p95_ms": 301.12459999509156,
+      "python_peak_p95_bytes": 1325390,
+      "estimated_embedding_input_tokens": 2653923,
+      "api_calls": 0,
+      "human_accuracy": null
+    },
+    "OR-77": {
+      "config": {
+        "id": "OR-77",
+        "strategy": "recursive-token-v1",
+        "size": 512,
+        "overlap": 77,
+        "overlap_percent": 15.04
+      },
+      "documents": 151,
+      "chunk_count": 7246,
+      "token_distribution": {
+        "median": 435.0,
+        "p95": 508,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.2156588017710026,
+      "overlap_chars": 702715,
+      "actual_overlap_tokens_estimate": 506311,
+      "clause_fragmentation_heuristic": 205,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 3473,
+      "table_cuts_heuristic": 3298,
+      "chunking_p50_ms": 75.84459998179227,
+      "chunking_p95_ms": 322.17519998084754,
+      "python_peak_p95_bytes": 1325390,
+      "estimated_embedding_input_tokens": 2846334,
+      "api_calls": 0,
+      "human_accuracy": null
+    },
+    "OR-128": {
+      "config": {
+        "id": "OR-128",
+        "strategy": "recursive-token-v1",
+        "size": 512,
+        "overlap": 128,
+        "overlap_percent": 25.0
+      },
+      "documents": 151,
+      "chunk_count": 8315,
+      "token_distribution": {
+        "median": 437,
+        "p95": 509,
+        "max": 512
+      },
+      "coverage_median": 1.0,
+      "nonwhitespace_loss": 0,
+      "token_inflation_median": 1.4189655172413793,
+      "overlap_chars": 1347739,
+      "actual_overlap_tokens_estimate": 977107,
+      "clause_fragmentation_heuristic": 178,
+      "clause_denominator_heuristic": 7808,
+      "sentence_boundary_heuristic": 4043,
+      "table_cuts_heuristic": 3840,
+      "chunking_p50_ms": 91.41730002011172,
+      "chunking_p95_ms": 409.511299978476,
+      "python_peak_p95_bytes": 1325390,
+      "estimated_embedding_input_tokens": 3317130,
+      "api_calls": 0,
+      "human_accuracy": null
+    }
+  },
+  "human_verified_references": 0,
+  "retrieval_metrics": {
+    "evidence_recall_at_k": null,
+    "mrr": null,
+    "ndcg_at_k": null
+  },
+  "zero_overlap_baseline": {
+    "A2": {
+      "config": {
+        "id": "A2",
+        "strategy": "fixed-token-v1",
+        "size": 512,
+        "overlap": 0
+      },
+      "documents": 151,
+      "chunk_count": 4946,
+      "chunk_token_distribution": {
+        "min": 2,
+        "median": 512.0,
+        "p95": 512,
+        "max": 512
+      },
+      "coverage_ratio_median": 1.0,
+      "uncovered_nonwhitespace_characters": 0,
+      "token_inflation_ratio_median": 1.0,
+      "source_span_overlap_ratio_median": 0.0,
+      "partial_table_chunks_heuristic": 2308,
+      "duplicate_chunks": 1,
+      "separator_only_chunks": 0,
+      "clause_fragmentation_count_heuristic": 1158,
+      "clause_fragmentation_denominator_heuristic": 7808,
+      "sentence_boundary_violations_heuristic": 4226,
+      "sentence_boundary_denominator_heuristic": 4301,
+      "numbered_clause_markers_heuristic": 7808,
+      "complete_clause_preservation": null,
+      "retrieval_metrics": {
+        "evidence_recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null
+      },
+      "chunking_latency_p50_ms": 30.117200018139556,
+      "chunking_latency_p95_ms": 150.0508000026457,
+      "chunking_cpu_p50_ms": 28.125,
+      "chunking_cpu_p95_ms": 146.875,
+      "worker_python_allocation_peak_p95_bytes": 4896867,
+      "worker_peak_rss_bytes_max_across_A1_A3": 155242496,
+      "embedding_input_token_estimate": 2340036,
+      "api_calls": 0
+    },
+    "A3": {
+      "config": {
+        "id": "A3",
+        "strategy": "recursive-token-v1",
+        "size": 512,
+        "overlap": 0,
+        "separators": [
+          "\\n\\n",
+          "\\n",
+          " ",
+          ""
+        ]
+      },
+      "documents": 151,
+      "chunk_count": 6116,
+      "chunk_token_distribution": {
+        "min": 1,
+        "median": 438.0,
+        "p95": 508,
+        "max": 512
+      },
+      "coverage_ratio_median": 1.0,
+      "uncovered_nonwhitespace_characters": 0,
+      "token_inflation_ratio_median": 1.0,
+      "source_span_overlap_ratio_median": 0.0,
+      "partial_table_chunks_heuristic": 2138,
+      "duplicate_chunks": 73,
+      "separator_only_chunks": 15,
+      "clause_fragmentation_count_heuristic": 213,
+      "clause_fragmentation_denominator_heuristic": 7808,
+      "sentence_boundary_violations_heuristic": 2910,
+      "sentence_boundary_denominator_heuristic": 5471,
+      "numbered_clause_markers_heuristic": 7808,
+      "complete_clause_preservation": null,
+      "retrieval_metrics": {
+        "evidence_recall_at_k": null,
+        "mrr": null,
+        "ndcg_at_k": null
+      },
+      "chunking_latency_p50_ms": 35.78839998226613,
+      "chunking_latency_p95_ms": 145.18200000748038,
+      "chunking_cpu_p50_ms": 34.375,
+      "chunking_cpu_p95_ms": 140.625,
+      "worker_python_allocation_peak_p95_bytes": 1325358,
+      "worker_peak_rss_bytes_max_across_A1_A3": 155242496,
+      "embedding_input_token_estimate": 2340099,
+      "api_calls": 0
+    }
+  }
+}

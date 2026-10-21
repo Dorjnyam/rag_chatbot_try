@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "A1-A3 offline baseline complete; retrieval evaluation blocked pending verified annotations",
+  "status": "A0-A3 and token overlap offline comparison complete; semantic real inference blocked; retrieval blocked pending human-verified annotations",
   "source": "Advanced_RAG_Chapter4_IEEE.docx Sections 4.1-4.10",
   "controls": {
     "parser_revision": "ordered-blocks-v1",
@@ -334,5 +334,56 @@
     "query_variants_per_question": 3,
     "human_verified": 0,
     "confidential_content_committed": false
+  },
+  "overlap_ablation": {
+    "status": "offline_complete_retrieval_blocked",
+    "run_id": "95a117e7-e306-43f1-bc34-94d0c9ee217b",
+    "report": "evaluation/split/OVERLAP_ABLATION.mn.md",
+    "json": "evaluation/split/split-overlap-95a117e7.json",
+    "csv": "evaluation/split/split-overlap-95a117e7.csv",
+    "snapshot_id": "real-corpus-15b24382-v1",
+    "dataset_sha256": "15b24382aeba13e943382370f5a4bfb4ede50b4033805006bad692d23bf3d56a",
+    "split_inputs": 151,
+    "load_failures_preserved": 3,
+    "positive_overlap_tokens": [
+      51,
+      77,
+      128
+    ],
+    "zero_overlap_baselines_reused": [
+      "A2",
+      "A3"
+    ],
+    "wall_seconds": 750.524,
+    "human_verified_references": 0,
+    "api_calls": 0,
+    "production_mutations": false
+  },
+  "semantic_experiments": {
+    "S1": {
+      "status": "mock_unit_tested_real_inference_blocked",
+      "implementation": "app/split_semantic.py",
+      "report": "evaluation/split/SEMANTIC_READINESS.mn.md",
+      "breakpoint_percentiles": [
+        80,
+        90,
+        95
+      ],
+      "max_tokens": 512,
+      "real_embedding_model": "unavailable",
+      "paid_api_called": false
+    },
+    "S2": {
+      "status": "blocked_pending_verified_structure_boundaries",
+      "silent_fallback": false
+    }
+  },
+  "annotation_review_readiness": {
+    "report": "evaluation/split/ANNOTATION_REVIEW_READINESS.mn.md",
+    "review_html_source_links_checked": 20,
+    "existing_source_files": 20,
+    "interactive_html_fields": 0,
+    "candidate_questions": 80,
+    "human_verified": 0
   }
 }

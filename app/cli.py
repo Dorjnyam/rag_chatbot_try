@@ -65,6 +65,16 @@ def register(app):
         except Exception as exc:
             raise click.ClickException(f"A1-A3 offline comparison failed: {type(exc).__name__}: {exc}") from exc
 
+    @benchmark_split.command("overlap-ablation")
+    @click.option("--snapshot", "snapshot_id", default=None, help="Previously frozen snapshot ID.")
+    def benchmark_split_overlap_ablation(snapshot_id):
+        from .split_experiments import run_overlap_ablation
+        try:
+            click.echo(json.dumps(run_overlap_ablation(snapshot_id) if snapshot_id else run_overlap_ablation(),
+                                  ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Overlap ablation failed: {type(exc).__name__}: {exc}") from exc
+
     @app.cli.group("migrate-indexes")
     def migrate_indexes():
         """Move active documents between embedding providers without deleting old indexes."""

@@ -76,6 +76,12 @@ Synthetic ба real Load нь өөр corpus; file composition, size, feature-э�
 4. **Split complexity:** synthetic probe дээр block count өсөхөд latency өсөв. Одоогийн real document дотор chunking stage P95 4.12 ms, харин tokenization + audit P95 50.82 ms; эхлээд accuracy annotation болон дараагийн controlled comparison, дараа нь bottleneck optimization шийднэ.
 5. **Parser capabilities:** automatic list marker/level, heading hierarchy, DOCX page provenance, table row/cell topology алга. Split algorithm эдгээрийг зохиож нөхөхгүй.
 
+## Дараагийн Phase 2 нэмэлт хэмжилт
+
+Token-overlap ablation ба semantic feasibility-ийн дэлгэрэнгүй тайлан: [OVERLAP_ABLATION.mn.md](OVERLAP_ABLATION.mn.md). Overlap run `95a117e7-e306-43f1-bc34-94d0c9ee217b` нь 151/151 parsed documents дээр 6 positive-overlap variant, 750.524 s total wall time, API calls 0 хэмжсэн; A2/A3 overlap-0 үр дүнг A1–A3 run-оос дахин тооцоогүй. Anonymous artifacts: [overlap JSON](split-overlap-95a117e7.json), [CSV](split-overlap-95a117e7.csv).
+
+20 баримтын candidate annotation review workflow-г [readiness review](ANNOTATION_REVIEW_READINESS.mn.md)-д шалгав: эх file links 20/20 нээгдэж байгаа боловч HTML read-only, reviewer editable JSON-г гараар update хийнэ; бүх 80 асуулт draft хэвээр. Semantic S1-ийн mock implementation test хийгдсэн; бодит embedding model байхгүй тул corpus inference blocked, S2 verified structure reference хүлээн blocked. Retrieval evaluation human-verified evidence 0 тул эхлээгүй.
+
 ## Эрэмбэлсэн зөвлөмж
 
 | Эрэмбэ | Зөвлөмж | Нотолгоо ба хүлээгдэх ашиг |

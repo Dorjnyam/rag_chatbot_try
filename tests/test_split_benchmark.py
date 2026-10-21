@@ -24,6 +24,77 @@ def test_source_interval_coverage_does_not_confuse_repeated_text_and_respects_fe
     assert result["quality_status"].startswith("N/A:")
 
 
+def test_overlap_token_spans_keep_coverage_budget_and_real_overlap():
+    from app.split_experiments import _token_overlap_spans, _validate_overlap_config
+    enc = _tokenizer()
+    assert _token_overlap_spans("", enc, 128, 16) == []
+    assert _token_overlap_spans("Монгол", enc, 128, 16) == [(0, len("Монгол"))]
+    text = ("Монгол компанийн бодлого. Үүрэг, хориг, үл хамаарах нөхцөл. " * 300)
+    for recursive in (False, True):
+        spans = _token_overlap_spans(text, enc, 128, 16, recursive)
+        assert spans[0][0] == 0 and spans[-1][1] == len(text)
+        assert all(lo <= previous_hi and hi > previous_hi for (lo, hi), (_, previous_hi)
+                   in zip(spans[1:], spans[:-1]))
+        assert all(len(enc.encode(text[lo:hi])) <= 128 for lo, hi in spans)
+        assert any(lo < prior_hi for (lo, _), (_, prior_hi) in zip(spans[1:], spans[:-1]))
+    from app.split_experiments import _experimental_chunks
+    blocks = [{"text": text, "heading": "Нэг", "block": 1, "kind": "paragraph"}]
+    version_id = str(uuid4())
+    first = _experimental_chunks(blocks, "fixed-token-v1", enc, version_id, size=128,
+                                 overlap=16, config_id="test-overlap")
+    second = _experimental_chunks(blocks, "fixed-token-v1", enc, version_id, size=128,
+                                  overlap=16, config_id="test-overlap")
+    assert [item["id"] for item in first] == [item["id"] for item in second]
+    assert [item["text"] for item in first] == [item["text"] for item in second]
+    for size, overlap in ((0, 0), (10, -1), (10, 10)):
+        try:
+            _validate_overlap_config(size, overlap)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid overlap configuration accepted")
+
+
+def test_source_interval_audit_accepts_token_overlap_without_false_loss():
+    text = "Монгол журам. Үүрэг, хариуцлага, үл хамаарах нөхцөл. " * 20
+    blocks = [{"text": text, "heading": "Нэг", "block": 1, "kind": "paragraph"}]
+    chunks = []
+    for lo, hi in ((0, 180), (140, 320), (280, len(text))):
+        chunks.append({"text": text[lo:hi], "metadata": {"char_start": lo, "char_end": hi,
+            "block_start": 1, "block_end": 1, "heading": "Нэг", "partial_table": False}})
+    result = _document_metrics("DOC0001", blocks, chunks, chunks, _tokenizer(), 512, 51)
+    assert result["coverage_ratio"] == 1.0
+    assert result["uncovered_nonwhitespace_characters"] == 0
+    assert result["source_span_overlap_characters"] == 80
+    assert result["actual_overlap_tokens_estimate"] > 0
+
+
+def test_semantic_chunking_primitives_mock_cache_and_structural_gate(tmp_path):
+    from app.split_semantic import (DeterministicMockEmbeddings, cached_embeddings,
+        semantic_chunk_spans, split_sentences, structure_constrained_spans)
+    enc = _tokenizer()
+    text = "1.2.3. Ажилтан үүргээ биелүүлнэ. Тух. дараагийн заалт. Дүн 1.25 байна."
+    sentences = split_sentences(text)
+    assert len(sentences) == 3
+    provider = DeterministicMockEmbeddings()
+    vectors = cached_embeddings(sentences, provider, tmp_path, {"purpose": "unit"})
+    assert cached_embeddings(sentences, provider, tmp_path, {"purpose": "unit"}) == vectors
+    assert semantic_chunk_spans(text, vectors, enc, percentile=90, max_tokens=64)
+    long_text = "үүрэг хариуцлага " * 300
+    long_sentences = split_sentences(long_text)
+    long_vectors = provider.embed_texts(long_sentences)
+    long_spans = semantic_chunk_spans(long_text, long_vectors, enc, max_tokens=32)
+    assert long_spans[0][0] == 0 and long_spans[-1][1] == len(long_text)
+    assert all(len(enc.encode(long_text[lo:hi])) <= 32 for lo, hi in long_spans)
+    assert all(left[1] == right[0] for left, right in zip(long_spans, long_spans[1:]))
+    try:
+        structure_constrained_spans(text, vectors, enc, verified_boundaries=None)
+    except ValueError as exc:
+        assert "blocked" in str(exc)
+    else:
+        raise AssertionError("S2 must require verified structure")
+
+
 def test_offline_report_does_not_include_chunk_or_source_text(tmp_path, monkeypatch):
     import app.split_benchmark as benchmark
 

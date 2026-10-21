@@ -221,21 +221,19 @@ def _source_intervals(blocks, chunks, size=1800, overlap=250):
             cursor = hi + 2
         if len(group) > 1:
             separators += 2 * (len(group) - 1)
-        start = 0
-        while start < text_len and idx < len(chunks):
+        covered_end = 0
+        while covered_end < text_len and idx < len(chunks):
             item = chunks[idx]
             lo, hi = item["metadata"]["char_start"], item["metadata"]["char_end"]
-            if lo != start or hi <= lo or hi > text_len:
-                raise ValueError("Chunk offsets are not a contiguous ordered cover of their source group.")
+            if lo > covered_end or hi <= covered_end or hi > text_len:
+                raise ValueError("Chunk offsets have a gap or do not advance the source cover.")
             for blo, bhi, block in spans:
                 left, right = max(lo, blo), min(hi, bhi)
                 if right > left:
                     key = str(block.get("block", "unknown"))
                     by_block.setdefault(key, []).append((left - blo, right - blo))
             idx += 1
-            if hi == text_len:
-                break
-            start = hi - overlap
+            covered_end = hi
     if idx != len(chunks):
         raise ValueError("Some output chunks could not be mapped to an ordered source group.")
     return by_block, separators
@@ -305,6 +303,23 @@ def _document_metrics(doc_id, blocks, raw_chunks, fitted_chunks, enc, size=1800,
     separator_only_count = len(raw_texts) - len(content_texts)
     joined_chars = sum(char_counts)
     overlap_chars = max(0, joined_chars - covered - separator_chars)
+    actual_overlap_tokens = 0
+    grouped_chunks = {}
+    for item in raw_chunks:
+        metadata = item.get("metadata", {})
+        key = (metadata.get("heading", ""), metadata.get("page_start"), metadata.get("page_end"))
+        grouped_chunks.setdefault(key, []).append(item)
+    for items in grouped_chunks.values():
+        for previous, current in zip(items, items[1:]):
+            prev_end = previous["metadata"].get("char_end", 0)
+            curr_start = current["metadata"].get("char_start", prev_end)
+            prev_block = previous["metadata"].get("block_end")
+            curr_block = current["metadata"].get("block_start")
+            same_group = (prev_block is None or curr_block is None
+                          or (isinstance(prev_block, int) and isinstance(curr_block, int)
+                              and curr_block <= prev_block))
+            if same_group and curr_start < prev_end:
+                actual_overlap_tokens += len(enc.encode(previous["text"][-(prev_end-curr_start):]))
     headings = [item["metadata"].get("heading", "") for item in raw_chunks]
     pages = [(item["metadata"].get("page_start"), item["metadata"].get("page_end")) for item in raw_chunks]
     clause_count = sum(len(__import__("re").findall(r"(?m)^\s*\d+(?:\.\d+)*(?:[.)])?\s+", text)) for text in text_by_block.values())
@@ -338,6 +353,7 @@ def _document_metrics(doc_id, blocks, raw_chunks, fitted_chunks, enc, size=1800,
         "separator_only_chunk_count": separator_only_count,
         "duplicate_chunk_ratio": duplicate_count/len(raw_chunks) if raw_chunks else None,
         "source_span_overlap_characters": overlap_chars,
+          "actual_overlap_tokens_estimate": actual_overlap_tokens,
         "source_span_overlap_ratio_of_emitted_chars": overlap_chars/joined_chars if joined_chars else 0,
         "character_target_utilization_median": statistics.median(char_counts)/size if char_counts and size else None,
         "source_text_tokens_without_overlap": source_token_count,
