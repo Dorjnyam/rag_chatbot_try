@@ -102,6 +102,7 @@ def test_ready_with_real_disposable_postgres_and_synthetic_indexes(app, ready, c
     response = client.get('/ready')
     assert response.status_code == 200, response.json
     assert all(response.json['checks'].values())
+    app.config['OPENAI_EMBEDDING_MODEL'] = 'incompatible-model'
     app.config['EMBEDDING_MODEL'] = 'incompatible-model'
     response = client.get('/ready')
     assert response.status_code == 503

@@ -6,7 +6,9 @@ import os
 import re
 import uuid
 import warnings
+from datetime import datetime, timezone
 from contextlib import contextmanager
+from pathlib import Path
 import pytest
 from docx import Document
 from sqlalchemy import create_engine, text
@@ -15,6 +17,64 @@ from werkzeug.datastructures import FileStorage
 from app import create_app
 from app.extensions import db
 from app.services.chunking import assign_ids
+
+
+PHASE35_TEST_PORT = 55439
+PHASE35_TEST_ROLE = "rag_phase35_test"
+
+
+def verify_phase35_test_target(admin_url, engine_factory=create_engine):
+    """Fail closed unless PostgreSQL identifies as this repo's private test cluster."""
+    parsed = make_url(admin_url)
+    expected_data_dir = (Path(__file__).resolve().parents[1] / "instance" / "pg-phase35").resolve()
+    if (parsed.get_backend_name() != "postgresql" or parsed.host not in ("127.0.0.1", "localhost", "::1")
+            or parsed.port != PHASE35_TEST_PORT or parsed.database != "postgres"
+            or parsed.username != PHASE35_TEST_ROLE):
+        raise RuntimeError("PostgreSQL target is not the designated localhost Phase 3.5 test admin role/port.")
+    identity_file = expected_data_dir / "phase35-test-identity.txt"
+    if not identity_file.is_file():
+        raise RuntimeError("The isolated PostgreSQL cluster has no private identity marker.")
+    cluster_identity = identity_file.read_text(encoding="utf8").strip()
+    expected_identity = "phase35-test:" + hashlib.sha256(
+        str(expected_data_dir).casefold().encode("utf8")).hexdigest()
+    if cluster_identity != expected_identity:
+        raise RuntimeError("The private PostgreSQL cluster identity marker does not match the expected data directory.")
+    engine = engine_factory(parsed)
+    try:
+        with engine.connect() as connection:
+            port = int(connection.exec_driver_sql("SHOW port").scalar_one())
+            version = connection.exec_driver_sql("SHOW server_version").scalar_one()
+            user, database = connection.exec_driver_sql("SELECT current_user, current_database()").one()
+            observed_identity = connection.exec_driver_sql(
+                "SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = current_database()"
+            ).scalar_one_or_none()
+            createdb, superuser, createrole = connection.exec_driver_sql(
+                "SELECT rolcreatedb, rolsuper, rolcreaterole FROM pg_roles WHERE rolname = current_user"
+            ).one()
+            if (observed_identity != cluster_identity or port != PHASE35_TEST_PORT or database != "postgres"
+                    or user != PHASE35_TEST_ROLE or not createdb or superuser or createrole):
+                raise RuntimeError("Connected PostgreSQL cluster identity or test-role privileges do not match the isolated target.")
+    finally:
+        engine.dispose()
+    artifact = {
+        "purpose": "private Phase 3.5 disposable integration-test environment",
+        "verified_at_utc": datetime.now(timezone.utc).isoformat(),
+        "host": parsed.host,
+        "port": port,
+        "control_database": database,
+        "admin_role": user,
+        "role_privileges": {"createdb": bool(createdb), "superuser": bool(superuser), "createrole": bool(createrole)},
+        "data_directory": str(expected_data_dir),
+        "database_identity_marker_verified": True,
+        "server_version": version,
+        "test_databases": "rag_test_<random-uuid>; created and dropped by ownership-marked fixture",
+        "chroma_isolation": "per-test pytest tmp_path/DATA_DIR/chroma",
+        "credentials_recorded": False,
+    }
+    artifact_path = expected_data_dir.parent / "test-results" / "phase35" / "environment.json"
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf8")
+    return artifact
 
 
 class FakeOpenAI:
@@ -28,7 +88,7 @@ class FakeOpenAI:
     def embed(self, texts, task, model=None, dimensions=None):
         from flask import current_app
         from app.services.vectors import normalize_vector
-        dims = dimensions or current_app.config["EMBEDDING_DIMENSIONS"]
+        dims = dimensions or current_app.config["OPENAI_EMBEDDING_DIMENSIONS"]
         vectors = []
         for item in texts:
             vector = [0.] * dims
@@ -87,20 +147,24 @@ def app(tmp_path):
     admin_url = os.getenv("TEST_DATABASE_ADMIN_URL")
     if not admin_url:
         pytest.skip("Integration isolation unavailable: set TEST_DATABASE_ADMIN_URL to a PostgreSQL admin connection with CREATEDB")
+    verify_phase35_test_target(admin_url)
     # Entering the context must succeed before any app/schema is initialized.
     database = disposable_database(admin_url)
     try:
         url = database.__enter__()
-    except Exception:
-        pytest.skip("Cannot provision an owned disposable PostgreSQL database; verify TEST_DATABASE_ADMIN_URL and CREATEDB permission")
+    except Exception as exc:
+        raise RuntimeError(f"Cannot provision an owned disposable PostgreSQL database ({type(exc).__name__}).") from exc
     try:
         application = create_app(dict(TESTING=True, DATA_DIR=tmp_path, SECRET_KEY="test-secret", SQLALCHEMY_DATABASE_URI=url,
             EMBEDDING_PROVIDER="openai", EMBEDDING_MODEL="text-embedding-3-small", GENERATION_MODEL="gpt-test",
+            OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_GENERATION_MODEL="gpt-test",
+            OPENAI_EMBEDDING_DIMENSIONS=128,
             OPENAI_API_KEY="", OPENAI_FACTORY=FakeOpenAI,
             EMBEDDING_DIMENSIONS=128, TRUSTED_HOSTS=["localhost", "127.0.0.1"]))
         with application.app_context():
             try:
-                db.create_all()
+                from flask_migrate import upgrade
+                upgrade(directory=str(Path(__file__).resolve().parents[1] / "migrations"))
                 yield application
             finally:
                 db.session.remove()

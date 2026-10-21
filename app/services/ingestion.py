@@ -9,7 +9,7 @@ from flask import current_app
 from sqlalchemy import select, func
 from ..extensions import db
 from ..models import Document, DocumentVersion, now, uid
-from .storage import fingerprint, mutation_lock, path, read_json, write_json
+from .storage import fingerprint, mutation_lock, path, read_json, root, write_json
 from .parsing import PARSER_REVISION, classify_error, parser_info, parse_bounded, native_fingerprint
 from .chunking import chunk
 from .embedding_contract import collection_contract_metadata, compatible_embedding_spaces, embedding_contract

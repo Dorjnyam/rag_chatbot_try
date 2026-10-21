@@ -6,7 +6,7 @@ import os
 import httpx
 import pytest
 from flask import Flask
-from conftest import disposable_database
+from conftest import disposable_database, verify_phase35_test_target
 from app.services.openai_provider import OpenAIProvider
 
 
@@ -57,6 +57,14 @@ def test_database_rejects_non_postgres_before_connecting():
     with pytest.raises(ValueError, match="PostgreSQL"):
         with disposable_database("sqlite://", lambda *a, **k: pytest.fail("must not connect")):
             pass
+
+
+def test_phase35_target_guard_rejects_default_application_port_before_connecting():
+    with pytest.raises(RuntimeError, match="designated localhost Phase 3.5"):
+        verify_phase35_test_target(
+            "postgresql+psycopg://rag_phase35_test@127.0.0.1:55438/postgres",
+            lambda *args, **kwargs: pytest.fail("unsafe target must be rejected before connecting"),
+        )
 
 
 def test_openai_rewrite_transient_failure_has_one_http_attempt():

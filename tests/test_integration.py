@@ -39,7 +39,7 @@ def test_openai_migration_stages_then_activates_and_rolls_back(app, ready, tmp_p
     from app.services.index_migration import prepare, activate, rollback
 
     app.config.update(OPENAI_FACTORY=FakeOpenAI, OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
-        OPENAI_EMBEDDING_DIMENSIONS=128)
+        OPENAI_EMBEDDING_DIMENSIONS=64)
     manifest = "migration-test"
     dry = prepare(None, dry_run=True)
     assert dry["eligible_documents"] == 1 and dry["eligible_chunks"] > 0
@@ -48,7 +48,7 @@ def test_openai_migration_stages_then_activates_and_rolls_back(app, ready, tmp_p
     document = db.session.get(Document, ready.document_id)
     previous = document.active_version_id
     assert previous == ready.id
-    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=128)
+    app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small", OPENAI_EMBEDDING_DIMENSIONS=64)
     assert activate(manifest)["status"] == "activated"
     assert document.active_version_id != previous
     assert rollback(manifest)["status"] == "rolled_back"
@@ -60,7 +60,7 @@ def test_openai_migration_dry_run_only_selects_incompatible_indexes(app, ready):
     from app.services.index_migration import prepare
 
     app.config.update(OPENAI_EMBEDDING_MODEL="text-embedding-3-small",
-        GENERATION_MODEL="gpt-6-luna", EMBEDDING_DIMENSIONS=1536, OPENAI_FACTORY=FakeOpenAI)
+        OPENAI_GENERATION_MODEL="gpt-6-luna", OPENAI_EMBEDDING_DIMENSIONS=1536, OPENAI_FACTORY=FakeOpenAI)
     openai_version, _ = upload(docx_file("This document already uses OpenAI embeddings."), "OpenAI policy", "en")
     process(openai_version.id)
     approve(openai_version.id)
@@ -123,6 +123,40 @@ def test_failure_never_replaces_active_and_retry_recovers(app, ready, monkeypatc
     ingestion.process(updated.id)
     assert db.session.get(Document, ready.document_id).active_version_id == updated.id
     assert len(store().ids(updated.collection_name, updated.id)) == updated.expected_chunks
+
+
+def test_chroma_write_then_postgres_activation_failure_is_reconciled(app, ready, monkeypatch):
+    """Chroma and PostgreSQL are separate stores; failed activation leaves safe orphans."""
+    original_active = ready.id
+    version, _ = ingestion.upload(docx_file("Updated policy staged before activation."), "Leave", "en", ready.document_id)
+    ingestion.process(version.id)
+    ingestion.approve(version.id)
+    real_commit = db.session.commit
+    injected = {"done": False}
+
+    def fail_activation_commit():
+        document = db.session.get(Document, ready.document_id)
+        if (not injected["done"] and version.state == "ready"
+                and document.active_version_id == version.id):
+            injected["done"] = True
+            raise RuntimeError("simulated PostgreSQL activation failure")
+        return real_commit()
+
+    monkeypatch.setattr(db.session, "commit", fail_activation_commit)
+    with pytest.raises(ValueError, match="simulated PostgreSQL activation failure"):
+        ingestion.process(version.id)
+
+    db.session.expire_all()
+    assert db.session.get(Document, ready.document_id).active_version_id == original_active
+    assert db.session.get(DocumentVersion, version.id).state == "failed"
+    assert store().ids(version.collection_name, version.id)
+
+    monkeypatch.setattr(db.session, "commit", real_commit)
+    issues = ingestion.reconcile()
+    assert any(item["kind"] == "orphan_vector" for item in issues)
+    ingestion.reconcile(repair=True)
+    assert not store().ids(version.collection_name, version.id)
+    assert db.session.get(Document, ready.document_id).active_version_id == original_active
 
 
 def test_delete_failure_excludes_document_and_retry_cleans(app, ready, monkeypatch):
@@ -203,6 +237,7 @@ def test_bad_citation_retries_once_and_abstains_safely(app, ready):
 
 
 def test_changed_embedding_space_fails_explicitly(app, ready):
+    app.config["OPENAI_EMBEDDING_MODEL"] = "different-model"
     app.config["EMBEDDING_MODEL"] = "different-model"
     log, _ = ask("leave", uid())
     assert log.status == "error" and "different embedding space" in log.error
