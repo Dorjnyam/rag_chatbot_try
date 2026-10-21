@@ -1,0 +1,544 @@
+{
+  "schema_version": 1,
+  "benchmark_run_id": "3145b4ad-fed0-45f0-96d3-bc401e1157e0",
+  "created_at": "2026-10-21T04:01:21.079276+00:00",
+  "dataset_name": "synthetic-mongolian-english-docx-v1",
+  "dataset_sha256": "7fc7571930c8c5a5812aa14ad7f6ba417cf5bef931da6b06b276da401c7007c7",
+  "parser_revision": "ordered-blocks-v1",
+  "production_mutations": false,
+  "database_connections": 0,
+  "vector_store_calls": 0,
+  "parser_config": {
+    "pdf_max_pages": 100,
+    "docx_max_expanded_bytes": 104857600,
+    "ocr_languages": "mon+eng",
+    "ocr_min_characters": 40,
+    "ocr_timeout_seconds": 60,
+    "conversion_timeout_seconds": 120,
+    "process_timeout_seconds": 900
+  },
+  "summary": {
+    "cases": 16,
+    "successes": 16,
+    "failures": 0,
+    "success_rate": 1.0,
+    "median_ms": 913.51,
+    "p95_ms": 1120.35,
+    "wall_seconds": 14.83,
+    "throughput_files_per_second": 1.078917385165078,
+    "throughput_mib_per_second": 0.038019177800988804,
+    "mean_cer": null,
+    "cer_cases": 0,
+    "peak_memory_bytes": null,
+    "peak_memory_note": "Not measured: parse_bounded runs a child process; no optional process-monitor dependency is installed by this tool.",
+    "by_format": {
+      "docx": {
+        "cases": 16,
+        "successes": 16,
+        "failures": 0,
+        "median_ms": 913.51,
+        "p95_ms": 1120.35,
+        "mean_text_characters": 181.625
+      }
+    },
+    "quality_note": "Quality metrics are reported only when manually verified ground-truth fields are supplied."
+  },
+  "records": [
+    {
+      "case_id": "equipment-en",
+      "run_id": "aa84c2b3-9849-471f-926a-0b50a8064406",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36896,
+      "duration_ms": 1120.35,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 179,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "equipment-mn",
+      "run_id": "fc26c828-2189-4fe0-80b6-fd8f30a9c7c1",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37047,
+      "duration_ms": 917.32,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 225,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "expenses-en",
+      "run_id": "d87c8046-3c49-4de3-8574-4782fb451b33",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36883,
+      "duration_ms": 900.16,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 170,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "expenses-mn",
+      "run_id": "70352b11-def9-4d46-943a-6426c5f325dc",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37014,
+      "duration_ms": 884.88,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 191,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "leave-en",
+      "run_id": "058d881d-2899-4693-826a-caa9993951df",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36881,
+      "duration_ms": 924.76,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 168,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "leave-mn",
+      "run_id": "1722f60e-cbd7-487d-9519-179ee516259d",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36989,
+      "duration_ms": 884.43,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 180,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "remote-en",
+      "run_id": "308a44e4-182a-4bdf-94bf-6a21452ceaee",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36894,
+      "duration_ms": 903.04,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 187,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "remote-mn",
+      "run_id": "d1301654-465f-4a57-8f1e-761d19ac80a7",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37023,
+      "duration_ms": 887.17,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 209,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "safety-en",
+      "run_id": "b93bd4c1-15a1-4520-83af-c85395b50f0e",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36883,
+      "duration_ms": 906.17,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 159,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "safety-mn",
+      "run_id": "b8fa764e-63dd-4ad8-a5d7-e9794be326a1",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37008,
+      "duration_ms": 908.49,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 177,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "training-en",
+      "run_id": "e49e24a4-98f2-4c22-be98-b2760b8a442b",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36891,
+      "duration_ms": 914.21,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 182,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "training-mn",
+      "run_id": "5d8e9acd-418a-4f51-96fb-c5e59270a1c2",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37001,
+      "duration_ms": 912.81,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 179,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "travel-en",
+      "run_id": "41b447a9-ae83-4fda-ba18-6229ed217b09",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36899,
+      "duration_ms": 925.61,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 178,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "travel-mn",
+      "run_id": "91b95014-2bcc-41f8-855c-795758e2b9bb",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 37014,
+      "duration_ms": 930.28,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 184,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "visitors-en",
+      "run_id": "97bee953-42d6-40a8-868c-cce93ce4016a",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36882,
+      "duration_ms": 931.91,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 169,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    },
+    {
+      "case_id": "visitors-mn",
+      "run_id": "03cef807-d98c-421f-936d-e97de1a1cebe",
+      "format": "docx",
+      "status": "success",
+      "error_category": null,
+      "file_size_bytes": 36995,
+      "duration_ms": 967.23,
+      "page_count": null,
+      "block_count": 6,
+      "text_characters": 169,
+      "heading_count": 1,
+      "table_blocks": 1,
+      "ocr_pages": 0,
+      "warning_count": 2,
+      "cer": null,
+      "heading_recall": null,
+      "clause_recall": null,
+      "table_text_recall": null,
+      "peak_memory_bytes": null,
+      "parser": {
+        "name": "python-docx",
+        "versions": {
+          "python-docx": "1.2.0"
+        },
+        "revision": "ordered-blocks-v1"
+      },
+      "parser_name": "python-docx",
+      "parser_versions": "{\"python-docx\": \"1.2.0\"}",
+      "parser_revision": "ordered-blocks-v1"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Optional debug extraction artifacts
+
+Enable with `LOAD_DEBUG_ARTIFACTS=true`. By default no debug artifacts are written. When enabled, extracted JSON is stored under `DATA_DIR/LOAD_DEBUG_DIR` (default `DATA_DIR/load-debug`) and named with version and processing-run IDs. The directory is created with owner-only permissions where the platform supports them and is never served by the Flask routes. On Windows, the directory inherits the parent directory ACL; set a private `DATA_DIR` ACL before enabling this option. Artifacts contain extracted document text and must be treated as sensitive. Disable the option and remove artifacts when debugging is complete.

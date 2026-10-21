@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "status": "planned_not_executed",
+  "source": "Advanced_RAG_Chapter4_IEEE.docx Sections 4.1-4.10",
+  "controls": {
+    "parser_revision": "ordered-blocks-v1",
+    "source_snapshot_id": "real-corpus-15b24382-v1",
+    "tokenizer": "cl100k_base",
+    "embedding_model": "text-embedding-3-small",
+    "human_reference_status": "not yet available",
+    "production_mutations": false
+  },
+  "experiments": [
+    {
+      "id": "E1-fixed-vs-recursive-512",
+      "priority": 1,
+      "status": "planned",
+      "research_sections": [
+        "4.2",
+        "4.3",
+        "4.8"
+      ],
+      "hypothesis": "Recursive separators preserve more complete paragraph/clause boundaries than token fixed windows at equivalent 512-token target.",
+      "baseline": {
+        "algorithm": "fixed-token",
+        "size_tokens": 512,
+        "overlap_tokens": 0
+      },
+      "variants": [
+        {
+          "algorithm": "recursive",
+          "size_tokens": 512,
+          "overlap_tokens": 0,
+          "separators": [
+            "\\n\\n",
+            "\\n",
+            " ",
+            ""
+          ]
+        }
+      ],
+      "controlled_variables": [
+        "same frozen parser blocks",
+        "same tokenizer",
+        "same heading/page fences",
+        "same source documents",
+        "same overlap",
+        "same retrieval configuration if later enabled"
+      ],
+      "metrics": [
+        "source interval coverage",
+        "complete-clause preservation only with verified references",
+        "actual token distribution",
+        "boundary diagnostics",
+        "latency",
+        "peak memory"
+      ],
+      "limitation": "Cannot claim retrieval quality without verified query/evidence annotations.",
+      "cost_and_complexity": "Each local variant runs current-sized corpus chunking only; retrieval embedding cost remains 0 until a separately approved retrieval experiment. Complexity: two chunking passes per document; boundary comparison requires verified references.",
+      "failure_analysis": "Not executed: this delivery stops before alternative algorithms. Failure analysis is N/A until results exist.",
+      "results": "N/A: planned only.",
+      "conclusion": "N/A: planned only."
+    },
+    {
+      "id": "E2-size-grid",
+      "priority": 2,
+      "status": "planned",
+      "research_sections": [
+        "4.2",
+        "4.3",
+        "4.9",
+        "4.10"
+      ],
+      "hypothesis": "Chunk target size changes boundary preservation, context granularity, and token/index cost.",
+      "variants": [
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 256,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 512,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 1024,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "recursive",
+          "size_tokens": 256,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "recursive",
+          "size_tokens": 512,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "recursive",
+          "size_tokens": 1024,
+          "overlap_tokens": 0
+        }
+      ],
+      "controlled_variables": [
+        "same frozen parser blocks",
+        "cl100k_base",
+        "zero overlap",
+        "same fences",
+        "same dataset"
+      ],
+      "metrics": [
+        "token distribution",
+        "coverage/content loss",
+        "verified boundary quality",
+        "latency",
+        "memory",
+        "prospective embedding tokens"
+      ],
+      "limitation": "A0 is 1800 characters and has no preassigned equivalent token target.",
+      "cost_and_complexity": "Six local variants (3 sizes x 2 algorithms); estimated chunk and future embedding-token totals must be measured, not inferred. Complexity is approximately linear in input text plus current block-span scans.",
+      "failure_analysis": "Not executed: this delivery stops before alternative algorithms.",
+      "results": "N/A: planned only.",
+      "conclusion": "N/A: planned only."
+    },
+    {
+      "id": "E3-overlap-ablation-400",
+      "priority": 3,
+      "status": "planned",
+      "research_sections": [
+        "4.8",
+        "4.9",
+        "4.10"
+      ],
+      "hypothesis": "Overlap can reduce evidence fragmentation at increasing duplication and embedding/context cost.",
+      "variants": [
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 400,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 400,
+          "overlap_tokens": 40
+        },
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 400,
+          "overlap_tokens": 80
+        },
+        {
+          "algorithm": "fixed-token",
+          "size_tokens": 400,
+          "overlap_tokens": 160
+        }
+      ],
+      "controlled_variables": [
+        "target 400 tokens",
+        "same tokenizer/parser/snapshot/fences"
+      ],
+      "metrics": [
+        "source span overlap",
+        "duplicate content",
+        "token inflation",
+        "verified clause preservation",
+        "prospective embedding token cost"
+      ],
+      "limitation": "No vector index/API usage in this offline step.",
+      "cost_and_complexity": "Four local variants; expected embedding-token/index cost rises with overlap, but exact increase must be measured. Complexity increases with emitted chunk count.",
+      "failure_analysis": "Not executed: this delivery stops before alternative algorithms.",
+      "results": "N/A: planned only.",
+      "conclusion": "N/A: planned only."
+    },
+    {
+      "id": "E4-sentence-512-mn",
+      "priority": 4,
+      "status": "planned",
+      "research_sections": [
+        "4.4",
+        "4.8"
+      ],
+      "hypothesis": "Validated sentence packing reduces sentence-boundary cuts without unacceptable size inflation.",
+      "variants": [
+        {
+          "algorithm": "sentence",
+          "size_tokens": 512,
+          "overlap_tokens": 0
+        },
+        {
+          "algorithm": "sentence-clause-protection",
+          "size_tokens": 512,
+          "overlap_tokens": 0
+        }
+      ],
+      "fixtures_required": [
+        "Mongolian abbreviations",
+        "initials",
+        "numbered clauses such as 1.2.3.",
+        "decimal/date values",
+        "quoted punctuation",
+        "overlong sentences"
+      ],
+      "controlled_variables": [
+        "same frozen source blocks",
+        "same tokenizer/fences"
+      ],
+      "metrics": [
+        "sentence-boundary violations on verified fixtures",
+        "complete-clause preservation on verified refs",
+        "token distribution",
+        "latency"
+      ],
+      "limitation": "Clause protection is a separate variant; regex diagnostics are not accuracy.",
+      "cost_and_complexity": "Local boundary segmentation; no API usage. Requires a curated Mongolian edge-case fixture and manual boundary labels.",
+      "failure_analysis": "Not executed: sentence algorithm is absent and remains outside this implementation.",
+      "results": "N/A: planned only.",
+      "conclusion": "N/A: planned only."
+    },
+    {
+      "id": "E5-block-aware-feasibility",
+      "priority": 5,
+      "status": "planned",
+      "research_sections": [
+        "4.6",
+        "4.10"
+      ],
+      "hypothesis": "Available block kind, heading string, and page fences may improve structure preservation over token fixed windows.",
+      "variants": [
+        {
+          "algorithm": "block-aware",
+          "size_tokens": 512,
+          "overlap_tokens": 0
+        }
+      ],
+      "controlled_variables": [
+        "same frozen parser output",
+        "use only present metadata",
+        "do not infer heading levels/list hierarchy/cell relationships"
+      ],
+      "metrics": [
+        "coverage",
+        "boundary preservation with verified refs",
+        "oversize fallback count",
+        "token distribution",
+        "latency/memory"
+      ],
+      "limitation": "Parser loses heading hierarchy, automatic numbering, merged-cell topology and DOCX page locations.",
+      "cost_and_complexity": "Local metadata-aware chunking; no API usage. Potential cost is boundary overflow/fallback and larger chunks. Only present parser metadata may be used.",
+      "failure_analysis": "Not executed: parser structure losses limit available signals.",
+      "results": "N/A: planned only.",
+      "conclusion": "N/A: planned only."
+    }
+  ],
+  "advanced_experiments": {
+    "semantic": {
+      "status": "deferred",
+      "trigger": "Verified topic-boundary errors remain after lower-cost baselines.",
+      "sections": [
+        "4.5"
+      ]
+    },
+    "parent_child": {
+      "status": "deferred",
+      "trigger": "Verified evidence requires wider parent context; Retrieval/context assembly is ready for a controlled change.",
+      "sections": [
+        "4.7"
+      ]
+    }
+  },
+  "shared_future_retrieval_controls": [
+    "same reviewed query split",
+    "same embedding model/vector space",
+    "same retrieval and reranking config",
+    "same top-k",
+    "same context token budget"
+  ],
+  "per_experiment_template": [
+    "hypothesis",
+    "baseline",
+    "experimental_variables",
+    "controlled_variables",
+    "dataset_and_annotation_status",
+    "metrics",
+    "results",
+    "failure_analysis",
+    "cost_and_complexity",
+    "limitations",
+    "conclusion"
+  ]
+}

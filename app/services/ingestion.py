@@ -1,5 +1,8 @@
 """Document lifecycle: PostgreSQL activation follows verified Chroma writes."""
 import hashlib
+import json
+import os
+import tempfile
 import time
 from pathlib import Path
 from flask import current_app
@@ -7,11 +10,34 @@ from sqlalchemy import select, func
 from ..extensions import db
 from ..models import Document, DocumentVersion, now, uid
 from .storage import fingerprint, mutation_lock, path, read_json, write_json
-from .parsing import PARSER_REVISION, parse_bounded, native_fingerprint
+from .parsing import PARSER_REVISION, classify_error, parser_info, parse_bounded, native_fingerprint
 from .chunking import chunk
 from .providers import provider
 from .vectorstore import store
 from . import sparse
+
+
+def _upload_event(event, **fields):
+    """Emit one machine-readable upload lifecycle record without document content."""
+    current_app.logger.info("rag_upload %s", json.dumps(
+        {"event": event, **fields}, sort_keys=True, separators=(",", ":")))
+
+
+def _upload_error_category(error, stage, extension):
+    message = str(error).casefold()
+    if stage == "metadata_validation":
+        if extension not in ("pdf", "docx", "doc"):
+            return "unsupported_format"
+        if "type does not match" in message:
+            return "mime_mismatch"
+        return "invalid_metadata"
+    if stage == "read_hash_signature":
+        if "at most" in message:
+            return "size_limit_exceeded"
+        if "nonempty" in message:
+            return "empty_upload"
+        return "signature_mismatch"
+    return "storage_or_database_failure"
 
 
 def index_config(provider_name=None):
@@ -60,62 +86,108 @@ def new_version(document, filename, media_type, sha256, file_path, config):
 
 
 def upload(file, title, language, document_id=None):
-    if language not in ("mn", "en", "mixed"):
-        raise ValueError("Choose Mongolian, English, or mixed.")
+    started = time.monotonic()
+    run_id = uid()
+    stage = "metadata"
     filename = (file.filename or "").replace("\\", "/").split("/")[-1][:255]
     extension = Path(filename).suffix.lower().lstrip(".")
-    if extension not in ("pdf", "docx", "doc"):
-        raise ValueError("Upload a PDF, DOCX, or DOC file.")
-    content = file.read(current_app.config["MAX_CONTENT_LENGTH"] + 1)
-    if not content or len(content) > current_app.config["MAX_CONTENT_LENGTH"]:
-        raise ValueError("Upload must be nonempty and at most 20 MiB.")
-    digest = hashlib.sha256(content).hexdigest()
-    with mutation_lock():
-        document = get_document(document_id) if document_id else None
-        matches = db.session.scalars(select(DocumentVersion).join(Document, Document.id == DocumentVersion.document_id)
-            .where(DocumentVersion.sha256 == digest, Document.state == "active").order_by(DocumentVersion.created_at.desc())).all()
-        config = index_config()
-        for match in matches:
-            if (not document_id or match.document_id == document_id) and match.config_hash == fingerprint(config):
-                return match, True
-        relative = f"uploads/{digest}.{extension}"
-        # Expensive parser validation is bounded in the extraction subprocess.
-        signature = content[:8]
-        if extension == "pdf" and not signature.startswith(b"%PDF-"):
-            raise ValueError("The upload is not a PDF.")
-        if extension == "docx" and not signature.startswith(b"PK"):
-            raise ValueError("The upload is not a DOCX archive.")
-        if extension == "doc" and signature != bytes.fromhex("d0cf11e0a1b11ae1"):
-            raise ValueError("The upload is not a legacy binary DOC file.")
-        target = path(relative)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        created_source = not target.exists()
-        try:
-            if created_source:
-                created_source = False
-                # Exclusive creation preserves an existing content-addressed source.
-                with target.open("xb") as handle:
-                    created_source = True
-                    handle.write(content)
-            if document is None:
-                document = Document(id=uid(), title=(title or filename).strip()[:240], language=language)
-                db.session.add(document)
-                db.session.flush()
-            version = new_version(document, filename, extension, digest, relative, config)
-            return version, False
-        except Exception:
-            db.session.rollback()
-            if created_source:
+    claimed_mime = (getattr(file, "mimetype", None) or "").lower()
+    size = 0
+    try:
+        stage = "metadata_validation"
+        if language not in ("mn", "en", "mixed"):
+            raise ValueError("Choose Mongolian, English, or mixed.")
+        if extension not in ("pdf", "docx", "doc"):
+            raise ValueError("Upload a PDF, DOCX, or DOC file.")
+        allowed_mimes = {
+            "pdf": {"application/pdf", "application/x-pdf", "application/octet-stream"},
+            "docx": {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "application/x-zip-compressed", "application/octet-stream"},
+            "doc": {"application/msword", "application/x-ole-storage", "application/octet-stream"},
+        }
+        if claimed_mime and claimed_mime not in allowed_mimes[extension]:
+            raise ValueError("The file type does not match its filename extension.")
+        stage = "read_hash_signature"
+        digest_state = hashlib.sha256()
+        first_bytes = b""
+        # Read in bounded chunks so accepted files do not occupy the request worker's
+        # memory in one large bytes object. The hard limit is enforced while streaming.
+        with tempfile.SpooledTemporaryFile(max_size=1024 * 1024, mode="w+b") as content:
+            limit = current_app.config["MAX_CONTENT_LENGTH"]
+            while True:
+                block = file.stream.read(min(1024 * 1024, limit + 1 - size))
+                if not block:
+                    break
+                if not first_bytes:
+                    first_bytes = block[:8]
+                size += len(block)
+                if size > limit:
+                    limit_label = f"{limit // (1024 * 1024)} MiB" if limit % (1024 * 1024) == 0 else f"{limit} bytes"
+                    raise ValueError(f"Upload must be nonempty and at most {limit_label}.")
+                digest_state.update(block)
+                content.write(block)
+            if not size:
+                raise ValueError("Upload must be nonempty.")
+            signature_ok = ((extension == "pdf" and first_bytes.startswith(b"%PDF-")) or
+                (extension == "docx" and first_bytes.startswith(b"PK")) or
+                (extension == "doc" and first_bytes == bytes.fromhex("d0cf11e0a1b11ae1")))
+            if not signature_ok:
+                raise ValueError({"pdf": "The upload is not a PDF.", "docx": "The upload is not a DOCX archive.",
+                    "doc": "The upload is not a legacy binary DOC file."}[extension])
+            digest = digest_state.hexdigest()
+            stage = "deduplicate_and_store"
+            with mutation_lock():
+                document = get_document(document_id) if document_id else None
+                matches = db.session.scalars(select(DocumentVersion).join(Document, Document.id == DocumentVersion.document_id)
+                    .where(DocumentVersion.sha256 == digest, Document.state == "active").order_by(DocumentVersion.created_at.desc())).all()
+                config = index_config()
+                for match in matches:
+                    if (not document_id or match.document_id == document_id) and match.config_hash == fingerprint(config):
+                        _upload_event("complete", outcome="duplicate", extension=extension, claimed_mime=claimed_mime or None,
+                            document_id=match.document_id, version_id=match.id, run_id=run_id,
+                            size_bytes=size, elapsed_ms=round((time.monotonic() - started) * 1000, 2))
+                        return match, True
+                relative = f"uploads/{digest}.{extension}"
+                target = path(relative)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                created_source = not target.exists()
                 try:
-                    references = db.session.scalar(select(func.count()).select_from(DocumentVersion)
-                        .where(DocumentVersion.file_path == relative))
-                    if references == 0:
-                        target.unlink(missing_ok=True)
+                    if created_source:
+                        created_source = False
+                        # Exclusive creation preserves an existing content-addressed source.
+                        with target.open("xb") as handle:
+                            created_source = True
+                            content.seek(0)
+                            while block := content.read(1024 * 1024):
+                                handle.write(block)
+                    if document is None:
+                        document = Document(id=uid(), title=(title or filename).strip()[:240], language=language)
+                        db.session.add(document)
+                        db.session.flush()
+                    version = new_version(document, filename, extension, digest, relative, config)
+                    _upload_event("complete", outcome="accepted_pending_parse", extension=extension, claimed_mime=claimed_mime or None,
+                        document_id=document.id, version_id=version.id, run_id=run_id,
+                        size_bytes=size, elapsed_ms=round((time.monotonic() - started) * 1000, 2))
+                    return version, False
                 except Exception:
-                    # An unavailable database cannot prove that the source is unreferenced.
                     db.session.rollback()
-                    current_app.logger.warning("Upload source cleanup deferred: reference check unavailable")
-            raise
+                    if created_source:
+                        try:
+                            references = db.session.scalar(select(func.count()).select_from(DocumentVersion)
+                                .where(DocumentVersion.file_path == relative))
+                            if references == 0:
+                                target.unlink(missing_ok=True)
+                        except Exception:
+                            db.session.rollback()
+                            current_app.logger.warning("Upload source cleanup deferred: reference check unavailable")
+                    raise
+    except Exception as exc:
+        _upload_event("rejected_or_failed", outcome="error", stage=stage, extension=extension or None,
+            claimed_mime=claimed_mime or None, size_bytes=size, error_type=type(exc).__name__,
+            error_category=_upload_error_category(exc, stage, extension),
+            run_id=run_id,
+            reason=str(exc) if isinstance(exc, ValueError) else None,
+            elapsed_ms=round((time.monotonic() - started) * 1000, 2))
+        raise
 
 
 
@@ -156,10 +228,13 @@ def approve(version_id, page_choices=None):
         version.approved_at = now()
         version.state = "pending"
         db.session.commit()
+        from .preview import delete_version_artifacts
+        delete_version_artifacts(version.id)
         return version
 
 
 def process(version_id, require_review=False):
+    process_run_id = uid()
     with mutation_lock():
         version = db.session.get(DocumentVersion, version_id)
         if not version:
@@ -201,12 +276,60 @@ def process(version_id, require_review=False):
                 db.session.commit()
                 relative = extraction_cache(version)
                 if path(relative).exists():
+                    cache_started = time.monotonic()
                     artifact = read_json(relative)
+                    parser = parser_info(version.media_type)
+                    current_app.logger.info("rag_upload_parse %s", json.dumps({"outcome": "cache_hit", "version_id": version.id,
+                        "document_id": document.id, "run_id": process_run_id, "extension": version.media_type,
+                        "parser": parser, "size_bytes": path(version.file_path).stat().st_size,
+                        "elapsed_ms": round((time.monotonic() - cache_started) * 1000, 2)}, separators=(",", ":")))
                 else:
                     parse_config = dict(current_app.config)
                     parse_config.update(OCR_LANGUAGES=version.config["ocr_languages"], OCR_MIN_CHARACTERS=version.config["ocr_min_characters"])
-                    artifact = parse_bounded(path(version.file_path), version.media_type, parse_config, version.config["forced_pages"])
+                    parse_started = time.monotonic()
+                    parser = parser_info(version.media_type)
+                    current_app.logger.info("rag_upload_parse %s", json.dumps({"outcome": "started", "version_id": version.id,
+                        "document_id": document.id, "run_id": process_run_id, "extension": version.media_type,
+                        "parser": parser, "size_bytes": path(version.file_path).stat().st_size,
+                        "config": {"pdf_max_pages": parse_config["PDF_MAX_PAGES"], "docx_max_expanded_bytes": parse_config["DOCX_MAX_EXPANDED"],
+                            "ocr_languages": version.config["ocr_languages"], "ocr_min_characters": version.config["ocr_min_characters"],
+                            "process_timeout_seconds": parse_config["PROCESS_TIMEOUT"]}}, separators=(",", ":")))
+                    try:
+                        artifact = parse_bounded(path(version.file_path), version.media_type, parse_config, version.config["forced_pages"])
+                    except Exception as exc:
+                        current_app.logger.warning("rag_upload_parse %s", json.dumps({"outcome": "rejected", "version_id": version.id,
+                            "document_id": document.id, "run_id": process_run_id, "parser": parser,
+                            "extension": version.media_type, "size_bytes": path(version.file_path).stat().st_size,
+                            "elapsed_ms": round((time.monotonic() - parse_started) * 1000, 2), "error_type": type(exc).__name__,
+                            "error_category": classify_error(exc, version.media_type),
+                            "reason": str(exc) if isinstance(exc, ValueError) else None}, separators=(",", ":")))
+                        raise
+                    current_app.logger.info("rag_upload_parse %s", json.dumps({"outcome": "validated", "version_id": version.id,
+                        "document_id": document.id, "run_id": process_run_id, "parser": parser,
+                        "extension": version.media_type, "size_bytes": path(version.file_path).stat().st_size,
+                        "elapsed_ms": round((time.monotonic() - parse_started) * 1000, 2),
+                        "page_count": len(artifact.get("candidates", [])) if version.media_type == "pdf" else None,
+                        "blocks": len(artifact.get("blocks", [])), "text_characters": sum(len(b.get("text", "")) for b in artifact.get("blocks", [])),
+                        "ocr_pages": sum(b.get("method") == "ocr" for b in artifact.get("blocks", [])),
+                        "table_blocks": sum(b.get("kind") == "table" for b in artifact.get("blocks", [])),
+                        "structural_elements": {kind: sum(b.get("kind") == kind for b in artifact.get("blocks", []))
+                            for kind in sorted({b.get("kind", "unknown") for b in artifact.get("blocks", [])})},
+                        "warning_count": len(artifact.get("warnings", []))}, separators=(",", ":")))
                     write_json(relative, artifact)
+                if current_app.config.get("LOAD_DEBUG_ARTIFACTS", False):
+                    try:
+                        debug_dir = path(current_app.config.get("LOAD_DEBUG_DIR", "load-debug"))
+                        debug_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+                        if os.name != "nt":
+                            os.chmod(debug_dir, 0o700)
+                        debug_file = debug_dir / f"{version.id}-{process_run_id}.json"
+                        descriptor = os.open(debug_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                        with os.fdopen(descriptor, "w", encoding="utf8") as handle:
+                            json.dump(artifact, handle, ensure_ascii=False, indent=2)
+                    except OSError as exc:
+                        current_app.logger.warning("rag_upload_debug_artifact %s", json.dumps({"outcome": "not_written",
+                            "version_id": version.id, "document_id": document.id, "run_id": process_run_id,
+                            "error_type": type(exc).__name__}, separators=(",", ":")))
                 version.extraction_path = relative
                 version.warnings = artifact["warnings"]
                 version.review_required = bool(artifact["warnings"]) or require_review
@@ -286,6 +409,8 @@ def delete_document(document_id):
             if store().ids(version.collection_name, version.id):
                 raise ValueError("Vectors remain; document stays deleting. Retry cleanup.")
             sparse.delete_index(version.id)
+            from .preview import delete_version_artifacts
+            delete_version_artifacts(version.id)
         others = db.session.scalars(select(DocumentVersion).join(Document, Document.id == DocumentVersion.document_id)
             .where(Document.id != document.id, Document.state != "deleted")).all()
         referenced = set()
@@ -354,6 +479,17 @@ def reconcile(repair=False):
                     store().collection(collection).delete(ids=[id_])
         for document in db.session.scalars(select(Document).where(Document.state == "deleting")):
             issues.append(dict(kind="pending_deletion", document=document.id))
+        preview_root = root() / "previews"
+        if preview_root.is_dir():
+            for directory in preview_root.iterdir():
+                if not directory.is_dir():
+                    continue
+                version = known.get(directory.name)
+                if version is None or version.state == "deleted":
+                    issues.append(dict(kind="orphan_preview_artifact", version=directory.name))
+                    if repair:
+                        from .preview import delete_version_artifacts
+                        delete_version_artifacts(directory.name)
         if repair:
             db.session.commit()
         return issues

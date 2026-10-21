@@ -2,11 +2,13 @@
 import json
 import os
 import hashlib
+from importlib import metadata as package_metadata
 import shutil
 import re
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 import zipfile
 from pathlib import Path
@@ -16,6 +18,44 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 PARSER_REVISION = "ordered-blocks-v1"
+
+
+def parser_info(extension):
+    """Report parser stack and installed Python package versions, when available."""
+    stacks = {
+        "pdf": ("pypdf + pypdfium2 + pytesseract", ("pypdf", "pypdfium2", "pytesseract")),
+        "docx": ("python-docx", ("python-docx",)),
+        "doc": ("LibreOffice conversion + python-docx", ("python-docx",)),
+    }
+    name, packages = stacks.get(extension, ("unsupported", ()))
+    versions = {}
+    for package in packages:
+        try:
+            versions[package] = package_metadata.version(package)
+        except package_metadata.PackageNotFoundError:
+            versions[package] = None
+    return {"name": name, "versions": versions, "revision": PARSER_REVISION}
+
+
+def classify_error(error, extension=None):
+    text = str(error or "").casefold()
+    if "encrypted" in text or "password" in text:
+        return "encrypted"
+    if "no usable text" in text or "empty" in text:
+        return "empty_document"
+    if "timed out" in text or "deadline" in text or "timeout" in text:
+        return "timeout"
+    if "upload a pdf" in text or "unsupported" in text or "not supported" in text:
+        return "unsupported_format"
+    if "ocr" in text or "tesseract" in text:
+        return "ocr_failure"
+    if extension == "docx" or ("docx" in text and any(word in text for word in ("archive", "zip", "word/document.xml", "invalid"))):
+        return "malformed_docx"
+    if extension == "pdf" or ("pdf" in text and any(word in text for word in ("invalid", "malformed", "eof", "stream"))):
+        return "malformed_pdf"
+    if extension == "doc":
+        return "malformed_doc_or_conversion_failure"
+    return "parse_failure"
 
 
 def native_fingerprint(config):
@@ -170,13 +210,15 @@ def parse_direct(source, extension, config, forced_pages=()):
     return dict(blocks=blocks, candidates=candidates, warnings=list(dict.fromkeys(warnings)), parser=PARSER_REVISION)
 
 
-def parse_bounded(source, extension, config, forced_pages=()):
+def parse_bounded(source, extension, config, forced_pages=(), metrics_callback=None):
     """Killable process bounds PDF parsing/rendering too, not only Tesseract."""
     with tempfile.TemporaryDirectory(prefix="rag-parse-") as temporary:
         request = Path(temporary) / "request.json"
         output = Path(temporary) / "output.json"
+        metrics = Path(temporary) / "metrics.json"
         keys = ("PDF_MAX_PAGES", "DOCX_MAX_EXPANDED", "OCR_MIN_CHARACTERS", "OCR_TIMEOUT", "CONVERT_TIMEOUT", "TESSERACT_CMD", "TESSDATA_PREFIX", "OCR_LANGUAGES", "LIBREOFFICE_CMD")
-        request.write_text(json.dumps(dict(source=str(source), extension=extension, config={key: config[key] for key in keys}, forced_pages=list(forced_pages))), encoding="utf8")
+        request.write_text(json.dumps(dict(source=str(source), extension=extension, config={key: config[key] for key in keys},
+            forced_pages=list(forced_pages), metrics=str(metrics) if metrics_callback else None)), encoding="utf8")
         try:
             result = subprocess.run([sys.executable, "-m", "app.services.parse_worker", str(request), str(output)], capture_output=True,
                 timeout=config["PROCESS_TIMEOUT"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -185,6 +227,11 @@ def parse_bounded(source, extension, config, forced_pages=()):
         if not output.exists():
             raise ValueError("Document parser process failed. Check the file and native tool installation.")
         data = json.loads(output.read_text(encoding="utf8"))
+        if metrics_callback and metrics.exists():
+            try:
+                metrics_callback(json.loads(metrics.read_text(encoding="utf8")))
+            except Exception:
+                pass
         if result.returncode or "error" in data:
             raise ValueError(data.get("error", "Document extraction failed."))
         return data

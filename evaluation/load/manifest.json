@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "name": "synthetic-mongolian-english-docx-v1",
+  "description": "The 16 fixed synthetic policy DOCX files already used by the RAG evaluation corpus. No quality ground truth is declared; add manually reviewed references before interpreting extraction accuracy.",
+  "cases": [
+    {"id":"equipment-en","file":"../corpus/equipment-en.docx"},
+    {"id":"equipment-mn","file":"../corpus/equipment-mn.docx"},
+    {"id":"expenses-en","file":"../corpus/expenses-en.docx"},
+    {"id":"expenses-mn","file":"../corpus/expenses-mn.docx"},
+    {"id":"leave-en","file":"../corpus/leave-en.docx"},
+    {"id":"leave-mn","file":"../corpus/leave-mn.docx"},
+    {"id":"remote-en","file":"../corpus/remote-en.docx"},
+    {"id":"remote-mn","file":"../corpus/remote-mn.docx"},
+    {"id":"safety-en","file":"../corpus/safety-en.docx"},
+    {"id":"safety-mn","file":"../corpus/safety-mn.docx"},
+    {"id":"training-en","file":"../corpus/training-en.docx"},
+    {"id":"training-mn","file":"../corpus/training-mn.docx"},
+    {"id":"travel-en","file":"../corpus/travel-en.docx"},
+    {"id":"travel-mn","file":"../corpus/travel-mn.docx"},
+    {"id":"visitors-en","file":"../corpus/visitors-en.docx"},
+    {"id":"visitors-mn","file":"../corpus/visitors-mn.docx"}
+  ]
+}

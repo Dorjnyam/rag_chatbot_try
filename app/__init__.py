@@ -1,4 +1,5 @@
 import secrets
+import json
 from pathlib import Path
 from urllib.parse import urlsplit
 from flask import Flask, abort, jsonify, request, session
@@ -66,6 +67,11 @@ def create_app(test_config=None):
 
     @app.errorhandler(413)
     def too_large(exc):
+        if request.path.startswith("/documents"):
+            app.logger.warning("rag_upload %s", json.dumps({"event": "rejected_or_failed", "outcome": "error",
+                "stage": "http_body_limit", "content_length_bytes": request.content_length,
+                "limit_bytes": app.config["MAX_CONTENT_LENGTH"], "error_type": "RequestEntityTooLarge",
+                "error_category": "request_body_size_limit_exceeded"}, separators=(",", ":")))
         return "Файлын хэмжээ 20 MiB хязгаараас хэтэрсэн байна.", 413
 
     @app.errorhandler(400)
@@ -81,7 +87,7 @@ def create_app(test_config=None):
     @app.after_request
     def headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; worker-src 'self'; style-src 'self'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
         return response
 
     return app

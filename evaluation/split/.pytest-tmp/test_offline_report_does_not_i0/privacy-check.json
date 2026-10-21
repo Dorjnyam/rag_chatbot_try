@@ -1,0 +1,34 @@
+{
+  "run_id": "test-run",
+  "snapshot_id": "test-snapshot",
+  "dataset_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "parser_revision": "ordered-blocks-v1",
+  "summary": {
+    "split_documents": 1,
+    "split_failures": 0,
+    "preserved_load_failures": 0,
+    "split_successes": 1,
+    "chunk_count": 1,
+    "wall_seconds": 1,
+    "throughput_docs_per_second": 1,
+    "chunk_token_median": 5,
+    "chunk_token_p95": 5
+  },
+  "documents": [
+    {
+      "doc_id": "DOC9999",
+      "metrics": {
+        "fitted_chunk_count": 1,
+        "quality_status": "N/A"
+      },
+      "chunks": [
+        {
+          "ordinal": 0,
+          "text_sha256": "def1ffb45d6c3be168c129b2c5711495bf99edcb58654b10bd4ddd613266049b",
+          "tokens": 5
+        }
+      ],
+      "status": "split_success"
+    }
+  ]
+}

@@ -1,12 +1,13 @@
 from urllib.parse import urlsplit, urlunsplit
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import aliased
 from ..extensions import db
 from ..models import Document, DocumentVersion
 from ..services import ingestion
 from ..services.storage import path, read_json
+from ..services import preview as document_preview
 
 bp = Blueprint("documents", __name__)
 
@@ -183,7 +184,87 @@ def version(version_id):
     artifact = read_json(version.extraction_path) if version.extraction_path and path(version.extraction_path).exists() else None
     manifest = read_json(version.manifest_path) if version.manifest_path and path(version.manifest_path).exists() else []
     return_to = safe_return_to(request.args.get("return_to"), url_for("documents.documents"))
-    return render_template("version.html", version=version, document=document, artifact=artifact, manifest=manifest, return_to=return_to)
+    return render_template("version.html", version=version, document=document, artifact=artifact, manifest=manifest,
+        return_to=return_to, preview_available=bool(document.state == "active" and artifact and version.state != "deleted"))
+
+
+@bp.post("/versions/<version_id>/preview/prepare")
+def prepare_preview(version_id):
+    version = db.get_or_404(DocumentVersion, version_id)
+    document = db.get_or_404(Document, version.document_id)
+    if document.state != "active":
+        abort(410)
+    try:
+        return jsonify(document_preview.prepare(version))
+    except ValueError as error:
+        # These messages are deliberately safe, actionable preview diagnostics;
+        # the global JSON handler otherwise masks every preview failure as a
+        # form-validation error, making a blank viewer impossible to diagnose.
+        current_app.logger.info("Preview preparation rejected for version %s: %s", version.id, error)
+        return jsonify(error=str(error)), 422
+    except Exception:
+        current_app.logger.exception("Unexpected preview preparation failure for version %s", version.id)
+        return jsonify(error="Preview бэлтгэх үед серверийн алдаа гарлаа. Серверийн log-ийг шалгана уу."), 500
+
+
+@bp.get("/versions/<version_id>/preview")
+def preview_pdf(version_id):
+    version = db.get_or_404(DocumentVersion, version_id)
+    document = db.get_or_404(Document, version.document_id)
+    if document.state != "active":
+        abort(410)
+    try:
+        prepared = document_preview.current_paths(version)
+    except (OSError, ValueError):
+        prepared = None
+    if not prepared:
+        abort(404)
+    response = send_file(path(prepared[0]), mimetype="application/pdf", as_attachment=False,
+        download_name=f"preview-{version.id}.pdf", conditional=True, max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'self'; sandbox"
+    return response
+
+
+@bp.get("/versions/<version_id>/preview/map")
+def preview_map(version_id):
+    version = db.get_or_404(DocumentVersion, version_id)
+    document = db.get_or_404(Document, version.document_id)
+    if document.state != "active":
+        abort(410)
+    try:
+        page_number = int(request.args.get("page", "1"))
+        return jsonify(document_preview.page_map(version, page_number))
+    except (FileNotFoundError, OSError, ValueError, KeyError, TypeError):
+        abort(404)
+
+
+@bp.post("/versions/<version_id>/preview/ocr")
+def preview_ocr(version_id):
+    version = db.get_or_404(DocumentVersion, version_id)
+    document = db.get_or_404(Document, version.document_id)
+    if document.state != "active":
+        abort(410)
+    body = request.get_json(silent=True) or {}
+    try:
+        page_number = int(body.get("page", 0))
+    except (TypeError, ValueError) as error:
+        raise ValueError("Хуудасны дугаар буруу байна.") from error
+    proposal = document_preview.make_ocr_proposal(version, page_number, body.get("rect"), body.get("region_id"))
+    return jsonify(proposal), 201
+
+
+@bp.post("/versions/<version_id>/preview/apply")
+def apply_preview_ocr(version_id):
+    version = db.get_or_404(DocumentVersion, version_id)
+    document = db.get_or_404(Document, version.document_id)
+    if document.state != "active":
+        abort(410)
+    body = request.get_json(silent=True) or {}
+    new_version = document_preview.apply_proposals(version, body.get("proposal_ids"))
+    target = url_for("documents.version", version_id=new_version.id,
+        return_to=safe_return_to(body.get("return_to"), url_for("documents.documents")))
+    return jsonify(version_id=new_version.id, state=new_version.state, url=target), 201
 
 
 @bp.get("/versions/<version_id>/source")

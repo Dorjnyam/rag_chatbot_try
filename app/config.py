@@ -54,6 +54,8 @@ def settings(instance):
         ROMANIZED_MONGOLIAN_ENABLED=True,
         OUTPUT_LANGUAGE="mn-Cyrl",
         MAX_CONTENT_LENGTH=20 * 1024 * 1024,
+        LOAD_DEBUG_ARTIFACTS=os.getenv("LOAD_DEBUG_ARTIFACTS", "false").casefold() == "true",
+        LOAD_DEBUG_DIR=os.getenv("LOAD_DEBUG_DIR", "load-debug"),
         PDF_MAX_PAGES=100,
         DOCX_MAX_EXPANDED=100 * 1024 * 1024,
         OCR_MIN_CHARACTERS=40,

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "measured_synthetic_only",
+  "strategy": "characters-v1",
+  "chunk_size_characters": 1800,
+  "chunk_overlap_characters": 250,
+  "canonical_text_sha256": "7a1071a8562a3acebb92fd393c4f3cc99a5541654c69c2de702ac3a164026608",
+  "purpose": "Measure block-span scan overhead while joined input text and output chunks stay identical.",
+  "not_real_corpus_evidence": true,
+  "results": [
+    {
+      "synthetic_block_count": 1,
+      "canonical_text_characters": 44998,
+      "chunk_count": 29,
+      "chunk_text_sha256": "7a1071a8562a3acebb92fd393c4f3cc99a5541654c69c2de702ac3a164026608",
+      "median_chunking_ms": 0.3040999872609973,
+      "p95_chunking_ms": 0.30720001086592674,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "synthetic_block_count": 10,
+      "canonical_text_characters": 44998,
+      "chunk_count": 29,
+      "chunk_text_sha256": "7a1071a8562a3acebb92fd393c4f3cc99a5541654c69c2de702ac3a164026608",
+      "median_chunking_ms": 0.31269999453797936,
+      "p95_chunking_ms": 0.3132999991066754,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "synthetic_block_count": 100,
+      "canonical_text_characters": 44998,
+      "chunk_count": 29,
+      "chunk_text_sha256": "7a1071a8562a3acebb92fd393c4f3cc99a5541654c69c2de702ac3a164026608",
+      "median_chunking_ms": 0.4845999937970191,
+      "p95_chunking_ms": 0.502600014442578,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "synthetic_block_count": 500,
+      "canonical_text_characters": 44998,
+      "chunk_count": 29,
+      "chunk_text_sha256": "7a1071a8562a3acebb92fd393c4f3cc99a5541654c69c2de702ac3a164026608",
+      "median_chunking_ms": 2.8808000206481665,
+      "p95_chunking_ms": 4.081999999471009,
+      "iterations": 5,
+      "warmup_runs": 1
+    }
+  ]
+}

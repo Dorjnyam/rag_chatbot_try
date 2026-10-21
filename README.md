@@ -145,6 +145,30 @@ plain JavaScript for the interface. `evaluation.py` contains readable metrics.
 6. Ask a question; expand its evidence and inspect the query trace.
 7. Upload updates through that document's version page or create a reindex build.
 
+Upload telemetry is written to the application log as single-line JSON records
+prefixed with `rag_upload` and `rag_upload_parse`. Initial `accepted_pending_parse`
+means the streamed size, claimed MIME (when supplied), and file signature passed;
+it does not mean the document parsed successfully. The later parse event reports
+validation success or rejection, elapsed time, pages, blocks, extracted character
+count, OCR pages, and review warnings. Oversized HTTP bodies are logged at
+`http_body_limit`. Records include byte counts, extension, and claimed MIME; they
+never include document text, filename, or content hash.
+Use these events to compare PDF, DOCX, and DOC size/latency/failure rates before
+changing limits or parser behavior.
+
+Run the database-free Load baseline from the repository root:
+
+```powershell
+.venv\Scripts\python.exe -m flask --app app benchmark-load
+```
+
+The fixed manifest and fixture instructions are in `evaluation/load/`. JSON, CSV,
+and Mongolian Markdown reports are written under `evaluation/load/reports/` by
+default. The runner calls the bounded parser only; it does not connect to
+PostgreSQL or Chroma. Add human-verified references to a copied manifest before
+using CER, heading, clause, or table measurements as accuracy evidence. Optional
+local extraction artifacts are off by default; see `evaluation/load/DEBUG_ARTIFACTS.md`.
+
 Sparse pages trigger OCR automatically; mixed pages with a text layer can escape
 that heuristic. Use the comma-separated OCR page override on **Create reindex build**.
 PDF citations use physical pages. DOCX/DOC citations use headings and block numbers;
@@ -222,12 +246,28 @@ Until backfill completes, queries that include a version without a valid sparse 
 fall back to dense retrieval and record the degraded state in the query configuration.
 For an explicit dense-only rollback, set `RETRIEVAL_MODE=dense`.
 
-To enable a local cross-encoder, install the optional package list, set
-`RERANKER_MODEL_PATH` to a model directory already present on disk, then enable
-`RERANKING_ENABLED=true`. The model loader never downloads weights. Check Mongolian,
-English and romanized query performance before relying on its ordering. Conditional
-query rewriting is opt-in through `QUERY_REWRITING_ENABLED=true` and uses at most one
-validated rewrite request for mixed or uncertain queries.
+To use Qwen3-Reranker-0.6B locally, install the optional package and download the
+Apache-2.0 model snapshot at the pinned revision (about 1.2 GB):
+
+```powershell
+uv pip install --python .venv\Scripts\python.exe -r requirements-reranker.lock.txt
+.venv\Scripts\hf.exe download Qwen/Qwen3-Reranker-0.6B --revision e61197ed45024b0ed8a2d74b80b4d909f1255473 --local-dir instance\models\qwen3-reranker-0.6b
+```
+
+Then set these values in your local `.env` and restart Flask:
+
+```dotenv
+RERANKING_ENABLED=true
+RERANKER_MODEL_PATH=C:/path/to/project/instance/models/qwen3-reranker-0.6b
+```
+
+The loader is local-only, caches the model once per Flask process, and keeps the
+checkpoint's BF16 weights on CPU to reduce memory use. It does not download weights
+or send queries/documents to an external service. Reranking adds latency; evaluate
+Mongolian, English and romanized queries on reviewed labels before relying on its
+ordering. Conditional query rewriting remains opt-in through
+`QUERY_REWRITING_ENABLED=true` and uses at most one validated rewrite request for
+mixed or uncertain queries.
 
 One collection is created per index-configuration fingerprint. Chunk IDs derive
 from build UUID, configuration and ordinal. Staged vectors are excluded using active
@@ -377,6 +417,11 @@ for selected evidence outside final K, whose original chunk IDs remain unchanged
 
 See [reliability implementation notes](documentation/10-reliability-and-evaluation.md)
 for validation limits, metrics, rollout and rollback.
+
+Version pages also provide a local PDF.js review preview and request-only OCR
+proposals for selected regions. Configure Tesseract and local `mon`/`eng` data with
+`scripts/setup-ocr.ps1`; previewing never approves or indexes a proposal. See the
+[document preview and OCR guide](documentation/11-document-preview-and-ocr.md).
 
 | Phase | Inspect and learn | Validate | Explain independently |
 |---|---|---|---|

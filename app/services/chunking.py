@@ -1,4 +1,5 @@
 """Character windows, preserving outer page/heading boundaries and offsets."""
+import json
 from uuid import UUID, uuid5
 from .storage import fingerprint
 
@@ -25,9 +26,15 @@ def chunk(blocks, config, version_id):
         while start < len(text):
             end = min(start + size, len(text))
             included = [b for lo, hi, b in spans if hi > start and lo < end]
+            methods = {b.get("method", "native") for b in included}
+            extraction_method = "ocr_proposal" if "ocr_proposal" in methods else "ocr" if "ocr" in methods else "native"
             metadata = dict(block_start=included[0]["block"], block_end=included[-1]["block"], heading=group[0].get("heading", ""),
-                extraction_method="ocr" if any(b["method"] == "ocr" for b in included) else "native", char_start=start, char_end=end,
+                extraction_method=extraction_method, char_start=start, char_end=end,
                 partial_table=any(b.get("kind") == "table" and (lo < start or hi > end) for lo, hi, b in spans if b in included))
+            source_regions = [b["source_region"] for b in included if b.get("source_region")]
+            if source_regions:
+                # Chroma metadata accepts scalar values only; preserve crop provenance as JSON text.
+                metadata["source_regions_json"] = json.dumps(source_regions, ensure_ascii=False, separators=(",", ":"))
             if group[0].get("page"):
                 metadata.update(page_start=group[0]["page"], page_end=group[-1]["page"])
             result.append(dict(text=text[start:end], metadata=metadata))

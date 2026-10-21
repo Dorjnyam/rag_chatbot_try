@@ -1,0 +1,1379 @@
+{
+  "schema_version": 1,
+  "status": "measured_offline",
+  "run_id": "1dc80917-a602-4185-9c3a-f16cae209b21",
+  "snapshot_id": "real-corpus-15b24382-v1",
+  "dataset_sha256": "15b24382aeba13e943382370f5a4bfb4ede50b4033805006bad692d23bf3d56a",
+  "tokenizer": "cl100k_base",
+  "tiktoken_version": "0.12.0",
+  "api_calls": 0,
+  "production_database_connections": 0,
+  "production_vector_store_calls": 0,
+  "documents": 151,
+  "chunk_count": 2468,
+  "embedding_input_tokens_estimate": 2667761,
+  "document_tokenizer_latency_p50_ms": 1.8180999904870987,
+  "document_tokenizer_latency_p95_ms": 7.080399984261021,
+  "measure_note": "Only cl100k_base encode() over fitted chunk text is timed; parser/chunker/provider/API costs excluded.",
+  "results": [
+    {
+      "doc_id": "DOC0001",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 8893,
+      "median_tokenizer_only_ms": 1.1587000044528395,
+      "p95_tokenizer_only_ms": 1.204799977131188,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0002",
+      "chunk_count": 41,
+      "embedding_input_tokens_estimate": 55829,
+      "median_tokenizer_only_ms": 7.080399984261021,
+      "p95_tokenizer_only_ms": 9.654499997850507,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0003",
+      "chunk_count": 18,
+      "embedding_input_tokens_estimate": 23696,
+      "median_tokenizer_only_ms": 2.76759997359477,
+      "p95_tokenizer_only_ms": 2.8520000050775707,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0004",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 23283,
+      "median_tokenizer_only_ms": 2.8532999858725816,
+      "p95_tokenizer_only_ms": 2.8734999941661954,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0005",
+      "chunk_count": 23,
+      "embedding_input_tokens_estimate": 31266,
+      "median_tokenizer_only_ms": 3.9834000053815544,
+      "p95_tokenizer_only_ms": 4.04190001427196,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0006",
+      "chunk_count": 23,
+      "embedding_input_tokens_estimate": 31250,
+      "median_tokenizer_only_ms": 4.003799986094236,
+      "p95_tokenizer_only_ms": 4.040500003611669,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0007",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 11802,
+      "median_tokenizer_only_ms": 1.7201000009663403,
+      "p95_tokenizer_only_ms": 1.7311999981757253,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0008",
+      "chunk_count": 20,
+      "embedding_input_tokens_estimate": 13390,
+      "median_tokenizer_only_ms": 1.6431999974884093,
+      "p95_tokenizer_only_ms": 1.6660999972373247,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0009",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 11227,
+      "median_tokenizer_only_ms": 1.4503999846056104,
+      "p95_tokenizer_only_ms": 1.4625999901909381,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0010",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 18639,
+      "median_tokenizer_only_ms": 2.2738999978173524,
+      "p95_tokenizer_only_ms": 2.3087000008672476,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0011",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 5493,
+      "median_tokenizer_only_ms": 0.6637999904341996,
+      "p95_tokenizer_only_ms": 0.673400005325675,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0012",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 6888,
+      "median_tokenizer_only_ms": 0.8679000020492822,
+      "p95_tokenizer_only_ms": 0.8818999922368675,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0013",
+      "chunk_count": 32,
+      "embedding_input_tokens_estimate": 38397,
+      "median_tokenizer_only_ms": 5.2013000240549445,
+      "p95_tokenizer_only_ms": 5.257000011624768,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0014",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7452,
+      "median_tokenizer_only_ms": 0.9979000024031848,
+      "p95_tokenizer_only_ms": 1.0226000158581883,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0015",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7689,
+      "median_tokenizer_only_ms": 0.9230000141542405,
+      "p95_tokenizer_only_ms": 0.9467999916523695,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0016",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 11874,
+      "median_tokenizer_only_ms": 1.4102999994065613,
+      "p95_tokenizer_only_ms": 1.4328000252135098,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0017",
+      "chunk_count": 1,
+      "embedding_input_tokens_estimate": 317,
+      "median_tokenizer_only_ms": 0.05930001498199999,
+      "p95_tokenizer_only_ms": 0.063000014051795,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0018",
+      "chunk_count": 25,
+      "embedding_input_tokens_estimate": 22375,
+      "median_tokenizer_only_ms": 3.019800002221018,
+      "p95_tokenizer_only_ms": 3.0329999863170087,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0019",
+      "chunk_count": 19,
+      "embedding_input_tokens_estimate": 21049,
+      "median_tokenizer_only_ms": 2.872300014132634,
+      "p95_tokenizer_only_ms": 2.9796000162605196,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0020",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 9151,
+      "median_tokenizer_only_ms": 1.1243999761063606,
+      "p95_tokenizer_only_ms": 1.1387999984435737,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0021",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 6828,
+      "median_tokenizer_only_ms": 1.029300008667633,
+      "p95_tokenizer_only_ms": 1.037900015944615,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0022",
+      "chunk_count": 21,
+      "embedding_input_tokens_estimate": 9360,
+      "median_tokenizer_only_ms": 1.5625999949406832,
+      "p95_tokenizer_only_ms": 3.501300001516938,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0023",
+      "chunk_count": 34,
+      "embedding_input_tokens_estimate": 44353,
+      "median_tokenizer_only_ms": 5.588300002273172,
+      "p95_tokenizer_only_ms": 5.780500010587275,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0024",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 4462,
+      "median_tokenizer_only_ms": 0.6899999862071127,
+      "p95_tokenizer_only_ms": 0.6972000119276345,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0025",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 23131,
+      "median_tokenizer_only_ms": 2.7910000062547624,
+      "p95_tokenizer_only_ms": 2.8288000030443072,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0026",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 7639,
+      "median_tokenizer_only_ms": 1.0187999869231135,
+      "p95_tokenizer_only_ms": 1.0268999903928488,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0027",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 11897,
+      "median_tokenizer_only_ms": 1.5358999953605235,
+      "p95_tokenizer_only_ms": 1.5377999807242304,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0028",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 20683,
+      "median_tokenizer_only_ms": 2.3199999995995313,
+      "p95_tokenizer_only_ms": 2.3713000118732452,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0029",
+      "chunk_count": 73,
+      "embedding_input_tokens_estimate": 64235,
+      "median_tokenizer_only_ms": 7.841599988751113,
+      "p95_tokenizer_only_ms": 7.978299981914461,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0030",
+      "chunk_count": 32,
+      "embedding_input_tokens_estimate": 39031,
+      "median_tokenizer_only_ms": 5.446499999379739,
+      "p95_tokenizer_only_ms": 5.665100004989654,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0031",
+      "chunk_count": 27,
+      "embedding_input_tokens_estimate": 29596,
+      "median_tokenizer_only_ms": 4.841699992539361,
+      "p95_tokenizer_only_ms": 4.8977000114973634,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0033",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 6122,
+      "median_tokenizer_only_ms": 0.8427999855484813,
+      "p95_tokenizer_only_ms": 0.8516999951098114,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0034",
+      "chunk_count": 2,
+      "embedding_input_tokens_estimate": 1533,
+      "median_tokenizer_only_ms": 2.076200005831197,
+      "p95_tokenizer_only_ms": 2.1038000122644007,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0035",
+      "chunk_count": 20,
+      "embedding_input_tokens_estimate": 17226,
+      "median_tokenizer_only_ms": 2.1936999983154237,
+      "p95_tokenizer_only_ms": 2.2342999873217195,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0036",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 12379,
+      "median_tokenizer_only_ms": 1.645500015001744,
+      "p95_tokenizer_only_ms": 1.6608999867457896,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0037",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 15577,
+      "median_tokenizer_only_ms": 1.8755999917630106,
+      "p95_tokenizer_only_ms": 1.8794999923557043,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0038",
+      "chunk_count": 35,
+      "embedding_input_tokens_estimate": 30790,
+      "median_tokenizer_only_ms": 5.153999984031543,
+      "p95_tokenizer_only_ms": 8.922600012738258,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0039",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 6906,
+      "median_tokenizer_only_ms": 0.9262999810744077,
+      "p95_tokenizer_only_ms": 1.36749999364838,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0040",
+      "chunk_count": 18,
+      "embedding_input_tokens_estimate": 19587,
+      "median_tokenizer_only_ms": 2.791899984003976,
+      "p95_tokenizer_only_ms": 3.165999980410561,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0041",
+      "chunk_count": 16,
+      "embedding_input_tokens_estimate": 9104,
+      "median_tokenizer_only_ms": 1.1793999874498695,
+      "p95_tokenizer_only_ms": 1.189000002341345,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0042",
+      "chunk_count": 28,
+      "embedding_input_tokens_estimate": 29780,
+      "median_tokenizer_only_ms": 3.993199992692098,
+      "p95_tokenizer_only_ms": 4.177199996775016,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0043",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 7297,
+      "median_tokenizer_only_ms": 0.978900003246963,
+      "p95_tokenizer_only_ms": 0.9834000084083527,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0044",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7048,
+      "median_tokenizer_only_ms": 0.9021000005304813,
+      "p95_tokenizer_only_ms": 0.9067000064533204,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0045",
+      "chunk_count": 16,
+      "embedding_input_tokens_estimate": 16377,
+      "median_tokenizer_only_ms": 2.02829999034293,
+      "p95_tokenizer_only_ms": 2.0337000023573637,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0046",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 8952,
+      "median_tokenizer_only_ms": 1.208700006827712,
+      "p95_tokenizer_only_ms": 1.214299991261214,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0047",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 8868,
+      "median_tokenizer_only_ms": 1.119799999287352,
+      "p95_tokenizer_only_ms": 1.1249000090174377,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0048",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 17552,
+      "median_tokenizer_only_ms": 2.212700026575476,
+      "p95_tokenizer_only_ms": 2.2243000275921077,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0049",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 13366,
+      "median_tokenizer_only_ms": 1.6345000185538083,
+      "p95_tokenizer_only_ms": 1.6513000009581447,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0050",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 6340,
+      "median_tokenizer_only_ms": 0.8843000105116516,
+      "p95_tokenizer_only_ms": 0.8907999726943672,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0051",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 11852,
+      "median_tokenizer_only_ms": 1.6988000134006143,
+      "p95_tokenizer_only_ms": 1.703000016277656,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0052",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 12883,
+      "median_tokenizer_only_ms": 1.9036999728996307,
+      "p95_tokenizer_only_ms": 1.9083000079263002,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0053",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 4612,
+      "median_tokenizer_only_ms": 0.6333999917842448,
+      "p95_tokenizer_only_ms": 0.7305000035557896,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0054",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 20868,
+      "median_tokenizer_only_ms": 2.460100018652156,
+      "p95_tokenizer_only_ms": 2.4662999785505235,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0055",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 13487,
+      "median_tokenizer_only_ms": 1.913400017656386,
+      "p95_tokenizer_only_ms": 1.9262999994680285,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0056",
+      "chunk_count": 22,
+      "embedding_input_tokens_estimate": 22386,
+      "median_tokenizer_only_ms": 3.8215000240597874,
+      "p95_tokenizer_only_ms": 3.8255999970715493,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0057",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 6138,
+      "median_tokenizer_only_ms": 0.748499995097518,
+      "p95_tokenizer_only_ms": 0.7533999742008746,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0058",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 5635,
+      "median_tokenizer_only_ms": 0.7150000019464642,
+      "p95_tokenizer_only_ms": 0.7207999879028648,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0059",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 19894,
+      "median_tokenizer_only_ms": 2.5166000123135746,
+      "p95_tokenizer_only_ms": 2.593199984403327,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0060",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 17360,
+      "median_tokenizer_only_ms": 2.1778999944217503,
+      "p95_tokenizer_only_ms": 2.1966000203974545,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0061",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 8951,
+      "median_tokenizer_only_ms": 0.9880999859888107,
+      "p95_tokenizer_only_ms": 1.0175000061281025,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0062",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7204,
+      "median_tokenizer_only_ms": 0.916799996048212,
+      "p95_tokenizer_only_ms": 0.9231999865733087,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0063",
+      "chunk_count": 16,
+      "embedding_input_tokens_estimate": 21611,
+      "median_tokenizer_only_ms": 2.5310000055469573,
+      "p95_tokenizer_only_ms": 2.582800021627918,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0064",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 13201,
+      "median_tokenizer_only_ms": 1.665899995714426,
+      "p95_tokenizer_only_ms": 1.6739999991841614,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0065",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 8638,
+      "median_tokenizer_only_ms": 1.1501999979373068,
+      "p95_tokenizer_only_ms": 1.1764999944716692,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0066",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 11643,
+      "median_tokenizer_only_ms": 1.941800001077354,
+      "p95_tokenizer_only_ms": 1.9469000108074397,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0067",
+      "chunk_count": 3,
+      "embedding_input_tokens_estimate": 3046,
+      "median_tokenizer_only_ms": 0.35310001112520695,
+      "p95_tokenizer_only_ms": 0.3566000086721033,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0068",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 13592,
+      "median_tokenizer_only_ms": 1.5653000154998153,
+      "p95_tokenizer_only_ms": 1.6149999864865094,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0069",
+      "chunk_count": 2,
+      "embedding_input_tokens_estimate": 1528,
+      "median_tokenizer_only_ms": 0.1928999845404178,
+      "p95_tokenizer_only_ms": 0.19869999960064888,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0070",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 8461,
+      "median_tokenizer_only_ms": 1.0722000151872635,
+      "p95_tokenizer_only_ms": 1.0772999958135188,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0071",
+      "chunk_count": 32,
+      "embedding_input_tokens_estimate": 38484,
+      "median_tokenizer_only_ms": 5.2183000079821795,
+      "p95_tokenizer_only_ms": 5.356099980417639,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0072",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 4649,
+      "median_tokenizer_only_ms": 0.5645999917760491,
+      "p95_tokenizer_only_ms": 0.5659999733325094,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0073",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 21256,
+      "median_tokenizer_only_ms": 2.6928999868687242,
+      "p95_tokenizer_only_ms": 2.7142000035382807,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0074",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 14641,
+      "median_tokenizer_only_ms": 1.8180999904870987,
+      "p95_tokenizer_only_ms": 1.8290999869350344,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0075",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 6435,
+      "median_tokenizer_only_ms": 0.8248999947682023,
+      "p95_tokenizer_only_ms": 0.8419000077992678,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0076",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 12165,
+      "median_tokenizer_only_ms": 1.5981000033207238,
+      "p95_tokenizer_only_ms": 1.6141000087372959,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0077",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 12246,
+      "median_tokenizer_only_ms": 1.452099997550249,
+      "p95_tokenizer_only_ms": 1.4615999825764447,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0078",
+      "chunk_count": 12,
+      "embedding_input_tokens_estimate": 15446,
+      "median_tokenizer_only_ms": 2.192299987655133,
+      "p95_tokenizer_only_ms": 2.1940000005997717,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0079",
+      "chunk_count": 3,
+      "embedding_input_tokens_estimate": 3223,
+      "median_tokenizer_only_ms": 0.4971000016666949,
+      "p95_tokenizer_only_ms": 0.5082999996375293,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0080",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 11780,
+      "median_tokenizer_only_ms": 1.8503000028431416,
+      "p95_tokenizer_only_ms": 1.8715999904088676,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0081",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 11871,
+      "median_tokenizer_only_ms": 1.5196999884210527,
+      "p95_tokenizer_only_ms": 1.5263000095728785,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0082",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 3735,
+      "median_tokenizer_only_ms": 0.45339998905546963,
+      "p95_tokenizer_only_ms": 0.46030001249164343,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0083",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 15638,
+      "median_tokenizer_only_ms": 2.6301000034436584,
+      "p95_tokenizer_only_ms": 2.6633000234141946,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0084",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 8689,
+      "median_tokenizer_only_ms": 1.0393999982625246,
+      "p95_tokenizer_only_ms": 1.043199998093769,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0085",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 17787,
+      "median_tokenizer_only_ms": 2.274099999340251,
+      "p95_tokenizer_only_ms": 2.2919000184629112,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0086",
+      "chunk_count": 57,
+      "embedding_input_tokens_estimate": 70053,
+      "median_tokenizer_only_ms": 8.532900013960898,
+      "p95_tokenizer_only_ms": 8.693200012203306,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0088",
+      "chunk_count": 31,
+      "embedding_input_tokens_estimate": 17359,
+      "median_tokenizer_only_ms": 3.097300010267645,
+      "p95_tokenizer_only_ms": 3.166899987263605,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0089",
+      "chunk_count": 54,
+      "embedding_input_tokens_estimate": 49579,
+      "median_tokenizer_only_ms": 7.167299976572394,
+      "p95_tokenizer_only_ms": 7.268599991220981,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0090",
+      "chunk_count": 30,
+      "embedding_input_tokens_estimate": 39820,
+      "median_tokenizer_only_ms": 4.839400004129857,
+      "p95_tokenizer_only_ms": 4.935600009048358,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0091",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 17987,
+      "median_tokenizer_only_ms": 2.1588999952655286,
+      "p95_tokenizer_only_ms": 2.1675000025425106,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0092",
+      "chunk_count": 8,
+      "embedding_input_tokens_estimate": 3013,
+      "median_tokenizer_only_ms": 0.44659999548457563,
+      "p95_tokenizer_only_ms": 0.45200000749900937,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0093",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 6982,
+      "median_tokenizer_only_ms": 0.905699998838827,
+      "p95_tokenizer_only_ms": 0.9153000137303025,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0094",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 14192,
+      "median_tokenizer_only_ms": 1.7597000114619732,
+      "p95_tokenizer_only_ms": 1.7791000136639923,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0095",
+      "chunk_count": 25,
+      "embedding_input_tokens_estimate": 32507,
+      "median_tokenizer_only_ms": 4.146199993556365,
+      "p95_tokenizer_only_ms": 4.228699981467798,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0096",
+      "chunk_count": 13,
+      "embedding_input_tokens_estimate": 9558,
+      "median_tokenizer_only_ms": 1.244900020537898,
+      "p95_tokenizer_only_ms": 1.2565999932121485,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0097",
+      "chunk_count": 44,
+      "embedding_input_tokens_estimate": 57442,
+      "median_tokenizer_only_ms": 7.502299995394424,
+      "p95_tokenizer_only_ms": 7.561100006569177,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0098",
+      "chunk_count": 73,
+      "embedding_input_tokens_estimate": 64244,
+      "median_tokenizer_only_ms": 7.735999999567866,
+      "p95_tokenizer_only_ms": 7.92810000712052,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0099",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 4225,
+      "median_tokenizer_only_ms": 0.5298999894876033,
+      "p95_tokenizer_only_ms": 0.5425999988801777,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0100",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 11042,
+      "median_tokenizer_only_ms": 1.548600004753098,
+      "p95_tokenizer_only_ms": 1.5901000006124377,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0101",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 19716,
+      "median_tokenizer_only_ms": 2.4542000028304756,
+      "p95_tokenizer_only_ms": 2.4924000026658177,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0102",
+      "chunk_count": 10,
+      "embedding_input_tokens_estimate": 12266,
+      "median_tokenizer_only_ms": 1.569800020661205,
+      "p95_tokenizer_only_ms": 1.5882000152487308,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0103",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 20216,
+      "median_tokenizer_only_ms": 2.7219000039622188,
+      "p95_tokenizer_only_ms": 2.727899991441518,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0104",
+      "chunk_count": 12,
+      "embedding_input_tokens_estimate": 15251,
+      "median_tokenizer_only_ms": 2.031099982559681,
+      "p95_tokenizer_only_ms": 2.0401999936439097,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0105",
+      "chunk_count": 18,
+      "embedding_input_tokens_estimate": 9511,
+      "median_tokenizer_only_ms": 1.2368999887257814,
+      "p95_tokenizer_only_ms": 1.2996000004932284,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0106",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 10981,
+      "median_tokenizer_only_ms": 1.4720000035595149,
+      "p95_tokenizer_only_ms": 1.5206000243779272,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0107",
+      "chunk_count": 20,
+      "embedding_input_tokens_estimate": 24084,
+      "median_tokenizer_only_ms": 3.337900008773431,
+      "p95_tokenizer_only_ms": 3.497900004731491,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0108",
+      "chunk_count": 8,
+      "embedding_input_tokens_estimate": 4139,
+      "median_tokenizer_only_ms": 0.5424999981187284,
+      "p95_tokenizer_only_ms": 0.5573999951593578,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0109",
+      "chunk_count": 8,
+      "embedding_input_tokens_estimate": 9831,
+      "median_tokenizer_only_ms": 1.4475000207312405,
+      "p95_tokenizer_only_ms": 1.4558999973814934,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0110",
+      "chunk_count": 35,
+      "embedding_input_tokens_estimate": 15802,
+      "median_tokenizer_only_ms": 1.9339999998919666,
+      "p95_tokenizer_only_ms": 1.9486999954096973,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0111",
+      "chunk_count": 19,
+      "embedding_input_tokens_estimate": 19412,
+      "median_tokenizer_only_ms": 2.554000006057322,
+      "p95_tokenizer_only_ms": 2.6686000055633485,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0112",
+      "chunk_count": 12,
+      "embedding_input_tokens_estimate": 16262,
+      "median_tokenizer_only_ms": 2.1089000219944865,
+      "p95_tokenizer_only_ms": 4.539899993687868,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0113",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 14997,
+      "median_tokenizer_only_ms": 2.2830999805592,
+      "p95_tokenizer_only_ms": 2.3415999894496053,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0114",
+      "chunk_count": 7,
+      "embedding_input_tokens_estimate": 9597,
+      "median_tokenizer_only_ms": 1.1699000024236739,
+      "p95_tokenizer_only_ms": 1.1992000218015164,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0115",
+      "chunk_count": 29,
+      "embedding_input_tokens_estimate": 32995,
+      "median_tokenizer_only_ms": 4.044500004965812,
+      "p95_tokenizer_only_ms": 4.0834000101312995,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0116",
+      "chunk_count": 29,
+      "embedding_input_tokens_estimate": 30936,
+      "median_tokenizer_only_ms": 4.546300013316795,
+      "p95_tokenizer_only_ms": 4.681999998865649,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0117",
+      "chunk_count": 14,
+      "embedding_input_tokens_estimate": 18143,
+      "median_tokenizer_only_ms": 2.111999987391755,
+      "p95_tokenizer_only_ms": 2.190199971664697,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0118",
+      "chunk_count": 36,
+      "embedding_input_tokens_estimate": 44359,
+      "median_tokenizer_only_ms": 5.603099998552352,
+      "p95_tokenizer_only_ms": 5.699600005755201,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0119",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 12087,
+      "median_tokenizer_only_ms": 1.5190999838523567,
+      "p95_tokenizer_only_ms": 1.5343999839387834,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0120",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 6522,
+      "median_tokenizer_only_ms": 0.7994000043254346,
+      "p95_tokenizer_only_ms": 0.8095999946817756,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0121",
+      "chunk_count": 9,
+      "embedding_input_tokens_estimate": 11226,
+      "median_tokenizer_only_ms": 1.5275999903678894,
+      "p95_tokenizer_only_ms": 3.8640999991912395,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0123",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7355,
+      "median_tokenizer_only_ms": 1.055500004440546,
+      "p95_tokenizer_only_ms": 1.8630999838933349,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0124",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 3968,
+      "median_tokenizer_only_ms": 0.5453999910969287,
+      "p95_tokenizer_only_ms": 0.7899999909568578,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0125",
+      "chunk_count": 12,
+      "embedding_input_tokens_estimate": 16534,
+      "median_tokenizer_only_ms": 1.971699995920062,
+      "p95_tokenizer_only_ms": 2.056299999821931,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0126",
+      "chunk_count": 2,
+      "embedding_input_tokens_estimate": 1997,
+      "median_tokenizer_only_ms": 0.25660000392235816,
+      "p95_tokenizer_only_ms": 0.2621999883558601,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0127",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 5071,
+      "median_tokenizer_only_ms": 0.6754000205546618,
+      "p95_tokenizer_only_ms": 0.6816000095568597,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0128",
+      "chunk_count": 35,
+      "embedding_input_tokens_estimate": 28896,
+      "median_tokenizer_only_ms": 4.017700004624203,
+      "p95_tokenizer_only_ms": 4.171899985522032,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0129",
+      "chunk_count": 23,
+      "embedding_input_tokens_estimate": 18345,
+      "median_tokenizer_only_ms": 2.2427999938372523,
+      "p95_tokenizer_only_ms": 2.2686999873258173,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0130",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 6521,
+      "median_tokenizer_only_ms": 0.755299988668412,
+      "p95_tokenizer_only_ms": 0.7647000020369887,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0131",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 18433,
+      "median_tokenizer_only_ms": 2.680400008102879,
+      "p95_tokenizer_only_ms": 2.7415999793447554,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0132",
+      "chunk_count": 16,
+      "embedding_input_tokens_estimate": 22066,
+      "median_tokenizer_only_ms": 2.530900004785508,
+      "p95_tokenizer_only_ms": 2.5350000069011003,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0133",
+      "chunk_count": 3,
+      "embedding_input_tokens_estimate": 4073,
+      "median_tokenizer_only_ms": 0.47480000648647547,
+      "p95_tokenizer_only_ms": 0.48519999836571515,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0134",
+      "chunk_count": 20,
+      "embedding_input_tokens_estimate": 27775,
+      "median_tokenizer_only_ms": 3.247199987526983,
+      "p95_tokenizer_only_ms": 3.301899996586144,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0135",
+      "chunk_count": 17,
+      "embedding_input_tokens_estimate": 14271,
+      "median_tokenizer_only_ms": 1.901899988297373,
+      "p95_tokenizer_only_ms": 1.9097999902442098,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0136",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 16094,
+      "median_tokenizer_only_ms": 2.4090000079013407,
+      "p95_tokenizer_only_ms": 2.415900002233684,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0137",
+      "chunk_count": 72,
+      "embedding_input_tokens_estimate": 62294,
+      "median_tokenizer_only_ms": 7.520799990743399,
+      "p95_tokenizer_only_ms": 7.8125,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0138",
+      "chunk_count": 3,
+      "embedding_input_tokens_estimate": 3180,
+      "median_tokenizer_only_ms": 0.3895999980159104,
+      "p95_tokenizer_only_ms": 0.3969999961555004,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0139",
+      "chunk_count": 34,
+      "embedding_input_tokens_estimate": 44374,
+      "median_tokenizer_only_ms": 6.005500006722286,
+      "p95_tokenizer_only_ms": 6.087099987780675,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0140",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 4993,
+      "median_tokenizer_only_ms": 0.6346000009216368,
+      "p95_tokenizer_only_ms": 0.6502000032924116,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0141",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 19981,
+      "median_tokenizer_only_ms": 2.5676999939605594,
+      "p95_tokenizer_only_ms": 2.608400012832135,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0142",
+      "chunk_count": 33,
+      "embedding_input_tokens_estimate": 46987,
+      "median_tokenizer_only_ms": 5.251299997325987,
+      "p95_tokenizer_only_ms": 5.285699997330084,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0143",
+      "chunk_count": 8,
+      "embedding_input_tokens_estimate": 7915,
+      "median_tokenizer_only_ms": 1.0313999955542386,
+      "p95_tokenizer_only_ms": 1.0409999813418835,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0144",
+      "chunk_count": 4,
+      "embedding_input_tokens_estimate": 5910,
+      "median_tokenizer_only_ms": 0.6539000023622066,
+      "p95_tokenizer_only_ms": 0.6578000029549003,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0145",
+      "chunk_count": 11,
+      "embedding_input_tokens_estimate": 10245,
+      "median_tokenizer_only_ms": 1.5406000020448118,
+      "p95_tokenizer_only_ms": 1.5532999823335558,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0146",
+      "chunk_count": 22,
+      "embedding_input_tokens_estimate": 27172,
+      "median_tokenizer_only_ms": 3.6628000088967383,
+      "p95_tokenizer_only_ms": 3.6678000178653747,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0147",
+      "chunk_count": 66,
+      "embedding_input_tokens_estimate": 62280,
+      "median_tokenizer_only_ms": 8.123300009174272,
+      "p95_tokenizer_only_ms": 8.25690000783652,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0148",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 6355,
+      "median_tokenizer_only_ms": 0.8825999975670129,
+      "p95_tokenizer_only_ms": 0.890900002559647,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0149",
+      "chunk_count": 6,
+      "embedding_input_tokens_estimate": 7958,
+      "median_tokenizer_only_ms": 0.986300001386553,
+      "p95_tokenizer_only_ms": 0.9892999951262027,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0150",
+      "chunk_count": 5,
+      "embedding_input_tokens_estimate": 5587,
+      "median_tokenizer_only_ms": 0.7064999954309314,
+      "p95_tokenizer_only_ms": 0.7102999952621758,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0151",
+      "chunk_count": 33,
+      "embedding_input_tokens_estimate": 42531,
+      "median_tokenizer_only_ms": 5.857899988768622,
+      "p95_tokenizer_only_ms": 5.9022000059485435,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0152",
+      "chunk_count": 27,
+      "embedding_input_tokens_estimate": 37016,
+      "median_tokenizer_only_ms": 4.433699999935925,
+      "p95_tokenizer_only_ms": 4.482899996219203,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0153",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 20195,
+      "median_tokenizer_only_ms": 2.7966999914497137,
+      "p95_tokenizer_only_ms": 2.809600002365187,
+      "iterations": 5,
+      "warmup_runs": 1
+    },
+    {
+      "doc_id": "DOC0154",
+      "chunk_count": 15,
+      "embedding_input_tokens_estimate": 18039,
+      "median_tokenizer_only_ms": 2.3957999947015196,
+      "p95_tokenizer_only_ms": 2.4224999942816794,
+      "iterations": 5,
+      "warmup_runs": 1
+    }
+  ]
+}

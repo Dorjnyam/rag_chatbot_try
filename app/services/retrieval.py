@@ -66,7 +66,11 @@ def _reranker():
         from sentence_transformers import CrossEncoder
     except ImportError as exc:
         raise ValueError("Optional reranking needs sentence-transformers installed.") from exc
-    model = CrossEncoder(config["RERANKER_MODEL_PATH"], local_files_only=True)
+    # Preserve the checkpoint's native BF16 weights to keep this optional
+    # 0.6B CPU reranker within local memory limits. Qwen publishes the model in
+    # BF16 and Sentence Transformers' CrossEncoder API accepts model_kwargs.
+    model = CrossEncoder(config["RERANKER_MODEL_PATH"], local_files_only=True,
+        device="cpu", model_kwargs={"torch_dtype": "auto"}, max_length=512)
     current_app.extensions["rag_reranker"] = model
     return model
 

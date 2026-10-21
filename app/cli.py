@@ -9,6 +9,43 @@ from .extensions import db
 
 
 def register(app):
+    @app.cli.group("benchmark-split")
+    def benchmark_split():
+        """Freeze and measure Split inputs offline without DB, Chroma, or provider calls."""
+
+    @benchmark_split.command("freeze")
+    def benchmark_split_freeze():
+        from .split_benchmark import freeze_snapshot
+        try:
+            click.echo(json.dumps(freeze_snapshot(), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Split snapshot failed: {type(exc).__name__}: {exc}") from exc
+
+    @benchmark_split.command("run")
+    @click.option("--snapshot", "snapshot_id", default=None, help="Previously frozen snapshot ID.")
+    def benchmark_split_run(snapshot_id):
+        from .split_benchmark import run_baseline
+        try:
+            click.echo(json.dumps(run_baseline(snapshot_id) if snapshot_id else run_baseline(), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Split baseline failed: {type(exc).__name__}: {exc}") from exc
+
+    @benchmark_split.command("complexity-probe")
+    def benchmark_split_complexity_probe():
+        from .split_benchmark import run_complexity_probe
+        try:
+            click.echo(json.dumps(run_complexity_probe(), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Synthetic complexity probe failed: {type(exc).__name__}: {exc}") from exc
+
+    @benchmark_split.command("token-count-probe")
+    def benchmark_split_token_count_probe():
+        from .split_benchmark import run_token_count_probe
+        try:
+            click.echo(json.dumps(run_token_count_probe(), ensure_ascii=False, indent=2))
+        except Exception as exc:
+            raise click.ClickException(f"Tokenizer probe failed: {type(exc).__name__}: {exc}") from exc
+
     @app.cli.group("migrate-indexes")
     def migrate_indexes():
         """Move active documents between embedding providers without deleting old indexes."""
@@ -228,6 +265,32 @@ def register(app):
         """Preview the experiment matrix without DB reads or AI requests."""
         from .benchmarking import benchmark_plan
         click.echo(json.dumps(benchmark_plan(dataset, app.config, split, int(top_k)), ensure_ascii=False, indent=2))
+
+    @app.cli.command("benchmark-load")
+    @click.option("--manifest", type=click.Path(exists=True, dir_okay=False, path_type=Path),
+        default=Path(app.root_path).parent / "evaluation" / "load" / "manifest.json", show_default=True)
+    @click.option("--output-dir", type=click.Path(file_okay=False, path_type=Path),
+        default=Path(app.root_path).parent / "evaluation" / "load" / "reports", show_default=True)
+    def benchmark_load(manifest, output_dir):
+        """Run parser-only load benchmarks; does not open PostgreSQL or Chroma."""
+        from .load_benchmark import run_load_benchmark
+        report = run_load_benchmark(manifest, output_dir, app.config)
+        click.echo(json.dumps({"dataset": report["dataset_name"], "summary": report["summary"],
+            "reports": [str(output_dir / (report["report_stem"] + suffix)) for suffix in (".json", ".csv", ".md")]},
+            ensure_ascii=False, indent=2))
+
+    @app.cli.command("benchmark-load-directory")
+    @click.option("--directory", type=click.Path(exists=True, file_okay=False, path_type=Path), default=Path("instance/uploads"), show_default=True)
+    @click.option("--output-dir", type=click.Path(file_okay=False, path_type=Path), default=Path("evaluation/load/reports"), show_default=True)
+    @click.option("--private-map", type=click.Path(path_type=Path), default=Path("instance/load-evaluation/private-source-map.csv"), show_default=True)
+    @click.option("--template", type=click.Path(path_type=Path), default=Path("evaluation/load/ground_truth_templates/real-corpus.template.json"), show_default=True)
+    def benchmark_load_directory(directory, output_dir, private_map, template):
+        """Assess and benchmark confidential corpus files without DB or Chroma access."""
+        from .load_benchmark import run_load_directory
+        def progress(done, total, status): click.echo(f"Completed {done}/{total} ({status})")
+        report = run_load_directory(directory, output_dir, private_map, template, app.config, progress)
+        click.echo(json.dumps({"run_id": report["benchmark_run_id"], "dataset_sha256": report["dataset_sha256"],
+            "summary": report["summary"], "inventory": report["inventory"], "report_stem": report["report_stem"]}, ensure_ascii=False, indent=2))
 
     @app.cli.command("compare-runs")
     @click.argument("first")
