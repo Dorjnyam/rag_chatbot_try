@@ -109,5 +109,28 @@
     "human_relevance": "deferred; existing dataset has 2 verified questions and is not representative",
     "mongolian_retrieval_accuracy_claim": false,
     "embedding_model_comparison": "deferred"
+  },
+  "phase_4_1_ann_fidelity_investigation": {
+    "command": ".\\.venv\\Scripts\\python.exe -m flask --app app benchmark-store ann-fidelity --repeats 3 --queries 32 --ef-search 50,100,200,400",
+    "n": 10000,
+    "dimensions": 1536,
+    "repeats": 3,
+    "queries_per_trial": 32,
+    "search_only_variable": "ef_search at collection creation",
+    "fixed_construction": {"space": "cosine", "sync_threshold": 1, "max_neighbors": 16, "ef_construction": 100},
+    "effective_settings_verified": [50, 100, 200, 400],
+    "private_result_path": "instance/store-evaluation/ann-fidelity/99525c3dbb9a/result.json",
+    "result_sha256": "76660df0d1f4283aed17777f1247b9d0abea29a4a2bf019146ebe220f0bdae4c",
+    "synthetic_vector_hash_identical_across_trials": true,
+    "synthetic_query_hash_identical_across_trials": true,
+    "chroma_stored_vector_hash_identical_across_trials": true,
+    "candidate_id_parity": "verified for all trials and both filter groups",
+    "result_count_completeness": "verified for all queries",
+    "warm_vs_reopened_top10_ids": "identical across all 12 trials and both filter groups",
+    "api_calls": 0,
+    "postgres_access": false,
+    "production_chroma_access": false,
+    "decision": "INDEX FIDELITY VERIFIED WITH LIMITATIONS",
+    "human_relevance_measured": false
   }
 }

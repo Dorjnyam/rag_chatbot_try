@@ -152,3 +152,75 @@ Remove-Item Env:TEST_DATABASE_ADMIN_URL
 ```
 
 Дахин ажиллуулсан `result.json` нь шинэ run ID-тай private artifact болно; commit хийхэд public тайлан дахь үр дүнтэй ID/SHA-г санаатайгаар шинэчилнэ.
+
+## Phase 4 Closure Gate — 2026-10-22
+
+Энэ хэсэг нь Phase 4.1-ийн ANN fidelity тайлан болон өмнөх S1–S6 үр дүнг **нэмэлтээр** хаалтын шалгалтаар баяжуулна. Өмнөх хүснэгт, хэмжилт, artifact-уудыг засварлан дарж бичээгүй. ANN туршилтын дэлгэрэнгүй аргачлал ба анхны үр дүнг [ANN_FIDELITY_INVESTIGATION.mn.md](ANN_FIDELITY_INVESTIGATION.mn.md)-ээс үзнэ.
+
+### Regression suite ба тусгаарлалт
+
+- 2026-10-22-нд бүрэн suite: **179 passed, 1 skipped, 0 failed**, 85.98 секунд; 87 warning.
+- Suite-ийг тусгай Phase 3.5 PostgreSQL cluster дээр ажиллуулсан: `127.0.0.1:55439`, data directory `instance/pg-phase35`, хязгаарлагдмал `rag_phase35_test` role. Test fixture-үүдийн database identity, marker, owner/privilege safety checks хэвээр ажилласан. Production application role/database-д холбогдоогүй; Chroma тестүүд temporary directory ашигласан.
+- Нэг skip: `tests/test_native.py:52`, Tesseract суулгаагүй. Warning-ууд нь SQLAlchemy `get_engine()` deprecation болон Chroma legacy embedding function configuration-ийн deprecation; suite-д failure байгаагүй.
+- Test үр дүнгийн JUnit болон environment attestation нь Git-ignored `instance/test-results/phase35/` дотор байна.
+
+### RSS outlier-ийн bounded давтан шалгалт
+
+Анхны ANN fidelity run-д тэмдэглэгдсэн **1,047.7 MiB** peak RSS-ийг historical үр дүн болгон хадгалсан; хэмжилтийг хасаагүй, орлуулж бичээгүй. Тухайн full run-уудын өөр нэг trial-д ~1,074 MiB өндөр peak ажиглагдаж байсан тул энэ нь өмнө нь давтагдашгүй байсан гэж дүгнэхгүй.
+
+Хязгаартай diagnostic-ийг `N=10,000`, `d=1,536`, `ef_search=50,100`, тохиргоо бүрт 3 fresh isolated collection, collection бүрт 8 query-гаар ажиллуулав. **6 trial**-ын RSS peak-үүд:
+
+| ef_search | Давталт 1 | Давталт 2 | Давталт 3 |
+|---:|---:|---:|---:|
+| 50 | 506.0 MiB | 571.5 MiB | 584.6 MiB |
+| 100 | 556.7 MiB | 603.7 MiB | 595.7 MiB |
+
+Энэ bounded run-д 1,047.7 MiB **дахин гараагүй**; min 506.0, median 584.6, max 603.7 MiB. Тиймээс outlier нь энэ run-д reproducible биш, гэхдээ өмнөх full-run-ийн sporadic өндөр ажиглалтыг хүчингүй болгохгүй. RSS нь Python + Chroma process-ийн sampled Working Set болохоос зөвхөн HNSW index-ийн memory биш; түүний яг шалтгааныг тогтоогоогүй. Diagnostic artifact: run `77c67916119e`, SHA-256 `14202d637f7f877f8e14a1b716ca7b5b0a6b1ddcf9c8da018417103d3f35a764` (`instance/store-evaluation/ann-fidelity/77c67916119e/result.json`, Git-ignored).
+
+### Тохиргооны regression шалгалт ба performance trade-off
+
+- ANN fidelity code нь зөвхөн isolated scratch Chroma collections болон benchmark command-д өөр өөр `ef_search` утга дамжуулсан. `app/services/vectorstore.py`, production collection үүсгэх тохиргоо болон production Chroma data-д өөрчлөлт ороогүй. Regression suite энэ шалгалтад 179 test давсан.
+- Synthetic N=10,000, d=1,536 хэмжилтэд `ef_search` 50→400 өсөхөд unfiltered Index Recall@10 **0.260→0.786**, filtered **0.341→0.928** болсон. Үүний зэрэгцээ warm-search P95 (trial P95-ийн дундаж) unfiltered **3.42→6.25 ms**, filtered **14.38→17.41 ms** болсон. Энэ нь fidelity ба latency-ийн synthetic trade-off болохоос хэрэглэгчийн semantic relevance-ийн өсөлт биш.
+- Өмнөх S4 N=1,000 дээрх .956, N=10,000 дээрх .394 болон өмнөх Phase 4 RSS дээд 648.7 MiB нь тус тусдаа historical workload/run-ууд хэвээр үлдэнэ. Dataset, run болон хэмжилтийн нөхцөл ялгаатай тул эдгээрийг шинэ bounded diagnostic-тай нэг цуваа мэт нэгтгэхгүй.
+- **Production `ef_search=400` болгож өөрчлөөгүй.** Synthetic индексийн fidelity нь Mongolian semantic retrieval relevance-ийг тогтоохгүй. Relevance Recall@k, MRR, nDCG, citation correctness одоогоор human-verified representative query/evidence corpus-гүй тул N/A.
+
+### Хаалтын шийдвэрүүд
+
+| Хаалга | Шийдвэр | Үндэслэл |
+|---|---|---|
+| **Operational Store Readiness** | **READY WITH DOCUMENTED LIMITATIONS** | Full isolated regression 179 passed; critical store-integrity regression илрээгүй. Cross-store атомик transaction болон бүх crash/concurrency нөхцөл баталгаажаагүй. |
+| **Index Fidelity Evaluation** | **VERIFIED WITH LIMITATIONS** | Exact-vs-ANN ижил vector/candidate set дээр шалгагдсан; Recall ба latency-ийн trade-off хэмжсэн. Зөвхөн synthetic 1536-d vectors, Chroma 1.5.9, энэ host/workload-д хамаарна. RSS-ийн sporadic outlier-ийн шалтгаан тодорхойгүй. |
+| **Human Relevance Evaluation** | **NOT READY** | Ground truth 2 асуулт/6 variation бөгөөд intended Mongolian query төрлүүдийг төлөөлөхөд хүрэлцэхгүй. Synthetic index fidelity нь семантик relevance биш. |
+| **Phase 5 — Retrieval эхлүүлэх** | **READY WITH DOCUMENTED LIMITATIONS — инженерийн интеграц ба offline plumbing-д** | Retrieval pipeline-ийн implementation, metadata/citation path болон тусгаарласан smoke/evaluation harness-ийг эхлүүлж болно. Харин чанарын benchmark, production `ef_search` сонголт, хэрэглэгчийн relevance-ийн дүгнэлтийг representative human-verified annotations хүртэл хийхэд бэлэн биш. |
+
+### Яг дахин гүйцэтгэх командууд (PowerShell)
+
+```powershell
+# Тусгай test PostgreSQL cluster-ийг асааж/identity safety шалгах
+.\scripts\start-phase35-test-postgres.ps1
+
+# Бүтэн regression suite; TEST_DATABASE_ADMIN_URL-г туршилтын cluster-д түр чиглүүлнэ
+$hadTestUrl = Test-Path Env:TEST_DATABASE_ADMIN_URL
+$oldTestUrl = if ($hadTestUrl) { $env:TEST_DATABASE_ADMIN_URL } else { $null }
+$pytestExit = 1
+try {
+    $env:TEST_DATABASE_ADMIN_URL = 'postgresql+psycopg://rag_phase35_test@127.0.0.1:55439/postgres'
+    $base = Join-Path $PWD ('instance\pytest-phase4-closure-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory $base | Out-Null
+    New-Item -ItemType Directory instance\test-results\phase35 -Force | Out-Null
+    .\.venv\Scripts\python.exe -m pytest -q -rs -p no:cacheprovider --basetemp=$base --junitxml=instance\test-results\phase35\junit-phase4-closure.xml
+    $pytestExit = $LASTEXITCODE
+} finally {
+    if ($hadTestUrl) { $env:TEST_DATABASE_ADMIN_URL = $oldTestUrl }
+    else { Remove-Item Env:TEST_DATABASE_ADMIN_URL -ErrorAction SilentlyContinue }
+}
+if ($pytestExit -ne 0) { exit $pytestExit }
+
+# RSS diagnostic (isolated synthetic Chroma; API/production DB/collection ашиглахгүй)
+.\.venv\Scripts\python.exe -m flask --app app benchmark-store ann-fidelity --repeats 3 --queries 8 --ef-search 50,100
+
+# Phase 4.1 full ANN fidelity reproduction (isolated synthetic Chroma)
+.\.venv\Scripts\python.exe -m flask --app app benchmark-store ann-fidelity --repeats 3 --queries 32 --ef-search 50,100,200,400
+```
+
+Бүтэн suite-ийн одоогийн үр дүн **179 passed, 1 skipped, 0 failed**; RSS diagnostic-ийн одоогийн үр дүн дээрх 6 trial, max **603.7 MiB**, historical 1,047.7 MiB outlier энэ bounded run-д давтагдаагүй. Ижил diagnostic командыг дахин ажиллуулахад шинэ run ID/SHA үүснэ.

@@ -121,6 +121,23 @@ def register(app):
             raise click.ClickException(f"Store benchmark stopped/failed: {type(exc).__name__}: {exc}") from exc
         click.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
+    @benchmark_store.command("ann-fidelity")
+    @click.option("--repeats", type=click.IntRange(1, 3), default=3, show_default=True)
+    @click.option("--queries", type=click.IntRange(8, 64), default=32, show_default=True)
+    @click.option("--ef-search", default="50,100,200,400", show_default=True,
+        help="Comma-separated search breadth values; construction configuration stays fixed.")
+    @click.option("--seed", type=click.IntRange(min=0), default=6102026, show_default=True)
+    def benchmark_store_ann_fidelity(repeats, queries, ef_search, seed):
+        """Investigate synthetic Chroma ANN fidelity at N=10,000; isolated, no API or DB."""
+        from .store_benchmark import run_ann_fidelity_investigation
+        try:
+            values = tuple(int(value.strip()) for value in ef_search.split(",") if value.strip())
+            result = run_ann_fidelity_investigation(Path(current_app.config["DATA_DIR"]), repeats=repeats,
+                query_count=queries, ef_search_values=values, seed=seed)
+        except (ValueError, RuntimeError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        click.echo(json.dumps(result, ensure_ascii=False, indent=2))
+
     @app.cli.group("benchmark-split")
     def benchmark_split():
         """Freeze and measure Split inputs offline without DB, Chroma, or provider calls."""

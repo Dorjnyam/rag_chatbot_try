@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from app import store_benchmark
-from app.store_benchmark import _create_collection, _exact_topk, _index_configs, load_store_report, run_store_benchmark
+from app.store_benchmark import (_align_stored_records, _collect_ids_and_vectors, _create_collection, _exact_topk,
+    _index_configs, _query_group, load_store_report, run_store_benchmark)
 
 
 def test_exact_cosine_reference_uses_stable_id_tie_breaking():
@@ -13,6 +14,15 @@ def test_exact_cosine_reference_uses_stable_id_tie_breaking():
         ["z-id", "a-id", "m-id"], 2)
     assert ids == ["a-id", "z-id"]
     assert distances == [0.0, 0.0]
+
+
+def test_stored_vector_and_metadata_alignment_uses_stable_ids():
+    ids, vectors, metadata = _align_stored_records(
+        ["a", "b"], ["b", "a"], np.asarray([[0, 1], [1, 0]], dtype=np.float32),
+        [{"label": "b"}, {"label": "a"}])
+    assert ids == ["a", "b"]
+    assert vectors.tolist() == [[1.0, 0.0], [0.0, 1.0]]
+    assert metadata == [{"label": "a"}, {"label": "b"}]
 
 
 def test_chroma_effective_config_reports_unsupported_legacy_batch_size(tmp_path):
@@ -29,6 +39,60 @@ def test_chroma_effective_config_reports_unsupported_legacy_batch_size(tmp_path)
     assert effective["max_neighbors"] == 16
     assert effective["ef_search"] == 100
     assert effective["batch_size"] is None
+    client.close()
+
+
+def test_chroma_exact_reference_known_order_filtered_and_unfiltered(tmp_path):
+    import chromadb
+    from chromadb.config import Settings
+
+    client = chromadb.PersistentClient(path=str(tmp_path / "known-order"),
+        settings=Settings(anonymized_telemetry=False))
+    collection = client.create_collection(name="known_order", embedding_function=None,
+        metadata={"benchmark_only": True}, configuration={"hnsw": {"space": "cosine",
+            "sync_threshold": 1, "max_neighbors": 16, "ef_construction": 100, "ef_search": 100}})
+    vectors = np.asarray([[1, 0, 0], [0.8, 0.6, 0], [0, 1, 0], [-1, 0, 0]], dtype=np.float32)
+    ids = ["known-nearest", "known-second", "known-third", "known-opposite"]
+    metadata = [{"group": "include"}, {"group": "exclude"}, {"group": "include"}, {"group": "include"}]
+    collection.add(ids=ids, embeddings=vectors, metadatas=metadata)
+    stored_ids, stored_vectors, stored_metadata = _collect_ids_and_vectors(collection)
+    order = {item: index for index, item in enumerate(stored_ids)}
+    stored_vectors = stored_vectors[[order[item] for item in ids]]
+    stored_metadata = [dict(stored_metadata[order[item]]) for item in ids]
+    query = np.asarray([[1, 0, 0]], dtype=np.float32)
+
+    unfiltered = _query_group(collection, query, ids, stored_vectors, stored_metadata, None, 10)
+    filtered = _query_group(collection, query, ids, stored_vectors, stored_metadata,
+        {"group": "include"}, 10)
+    raw = collection.query(query_embeddings=query, n_results=4, include=["distances"])
+    filtered_raw = collection.query(query_embeddings=query, n_results=4,
+        where={"group": "include"}, include=["distances"])
+    assert raw["ids"][0] == ["known-nearest", "known-second", "known-third", "known-opposite"]
+    assert filtered_raw["ids"][0] == ["known-nearest", "known-third", "known-opposite"]
+    assert unfiltered["candidate_set_match"] is True
+    assert filtered["candidate_set_match"] is True
+    assert unfiltered["index_recall_at_k"]["1"] == 1.0
+    assert filtered["index_recall_at_k"]["1"] == 1.0
+    assert unfiltered["result_count_complete"] is True
+    assert filtered["result_count_complete"] is True
+    assert max(unfiltered["distance_abs_error"]["max"],
+        filtered["distance_abs_error"]["max"]) < 1e-6
+    client.close()
+
+
+@pytest.mark.parametrize("ef_search", [50, 100, 200, 400])
+def test_chroma_applies_controlled_ef_search_values(tmp_path, ef_search):
+    import chromadb
+    from chromadb.config import Settings
+    from app.store_benchmark import _effective_hnsw
+
+    client = chromadb.PersistentClient(path=str(tmp_path / f"ef-{ef_search}"),
+        settings=Settings(anonymized_telemetry=False))
+    collection = client.create_collection(name=f"ef_search_{ef_search}", embedding_function=None,
+        metadata={"benchmark_only": True}, configuration={"hnsw": {"space": "cosine",
+            "sync_threshold": 1, "max_neighbors": 16, "ef_construction": 100,
+            "ef_search": ef_search}})
+    assert _effective_hnsw(collection)["ef_search"] == ef_search
     client.close()
 
 
