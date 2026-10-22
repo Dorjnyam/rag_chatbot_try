@@ -16,8 +16,9 @@ def fingerprint(value):
 
 
 def path(relative):
-    result = (root() / relative).resolve()
-    if not result.is_relative_to(root()):
+    base = root()
+    result = (base / relative).resolve()
+    if not result.is_relative_to(base):
         raise ValueError("Artifact path outside application data directory")
     return result
 

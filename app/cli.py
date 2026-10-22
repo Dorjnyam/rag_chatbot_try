@@ -142,6 +142,40 @@ def register(app):
     def benchmark_split():
         """Freeze and measure Split inputs offline without DB, Chroma, or provider calls."""
 
+    @app.cli.group("benchmark-retrieval")
+    def benchmark_retrieval():
+        """Run isolated Phase 5 retrieval mechanics benchmarks without paid APIs."""
+
+    @benchmark_retrieval.command("offline")
+    @click.option("--iterations", type=click.IntRange(1, 20), default=5, show_default=True)
+    @click.option("--seed", type=int, default=72026, show_default=True)
+    def benchmark_retrieval_offline(iterations, seed):
+        from .retrieval_benchmark import run_offline_benchmark
+        try:
+            result = run_offline_benchmark(iterations=iterations, seed=seed)
+        except (ValueError, RuntimeError, OSError) as exc:
+            raise click.ClickException(f"Offline retrieval benchmark failed: {type(exc).__name__}: {exc}") from exc
+        summary = {key: result[key] for key in ("run_id", "private_result_path", "private_result_sha256",
+            "snapshot_id", "document_count", "chunk_count", "configuration", "index_build_ms",
+            "latency", "candidate_counts", "duplicate_rate_mean", "context_tokens", "storage_bytes",
+            "memory", "environment", "packages", "api_calls", "postgresql_access", "production_chroma_access")}
+        click.echo(json.dumps(summary, ensure_ascii=False, indent=2))
+
+    @benchmark_retrieval.command("bm25-profile")
+    @click.option("--iterations", type=click.IntRange(1, 20), default=5, show_default=True)
+    def benchmark_retrieval_bm25_profile(iterations):
+        from .retrieval_benchmark import run_bm25_investigation
+        try:
+            result = run_bm25_investigation(iterations=iterations)
+        except (ValueError, RuntimeError, OSError) as exc:
+            raise click.ClickException(f"BM25 performance investigation failed: {type(exc).__name__}: {exc}") from exc
+        summary = {key: result[key] for key in ("run_id", "private_result_path", "private_result_sha256",
+            "snapshot_id", "document_count", "chunk_count", "query_count", "configuration",
+            "index_construction", "cold_application_cache_initialization", "warm_search", "warm_search_variation",
+            "cache_counts_across_warm_queries", "ranking_equivalence", "memory", "environment",
+            "database_access", "provider_api_calls")}
+        click.echo(json.dumps(summary, ensure_ascii=False, indent=2))
+
     @benchmark_split.command("freeze")
     def benchmark_split_freeze():
         from .split_benchmark import freeze_snapshot

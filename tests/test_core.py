@@ -124,6 +124,14 @@ def test_bm25_unicode_metadata_and_rrf_deduplication(tmp_path):
     assert merged[0]["branch_ranks"] == {"dense": 1, "sparse": 1}
 
 
+def test_query_candidate_normalization_preserves_ids_dates_clauses_and_negation():
+    from app.services.language import query_candidates
+    source = "AJ-04/2026 3.2.1 tsalin bish"
+    normalized = query_candidates(source)
+    assert normalized["original"] == source
+    assert normalized["candidates"][-1] == "AJ-04/2026 3.2.1 цалин биш"
+
+
 def test_gold_requires_excerpt_and_location():
     gold = [dict(unit_id="x", version_id="v", block=2, excerpt="correct qualification")]
     hit = dict(text="wrong passage", metadata=dict(version_id="v", block_start=1, block_end=4))

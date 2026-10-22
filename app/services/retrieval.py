@@ -9,6 +9,7 @@ from ..models import Document, DocumentVersion
 from .openai_provider import openai_client
 from .vectorstore import store
 from .embedding_contract import compatible_embedding_spaces
+from .storage import fingerprint, read_json
 from . import sparse
 
 
@@ -35,6 +36,52 @@ def embedding_mismatch(version, config=None):
 
 def incompatible_active_count():
     return sum(1 for version, _document in active_versions() if embedding_mismatch(version))
+
+
+def validate_candidate_provenance(rankings, versions):
+    """Fail closed unless every candidate agrees with its active source manifest."""
+    version_documents = {version.id: document.id for version, document in versions}
+    manifests = {}
+    for hits in rankings.values():
+        for hit in hits:
+            if not isinstance(hit, dict) or not isinstance(hit.get("id"), str) or not hit["id"]:
+                raise ValueError("Retrieval candidate has no canonical chunk ID.")
+            metadata = hit.get("metadata")
+            text = hit.get("text")
+            version_id = metadata.get("version_id") if isinstance(metadata, dict) else None
+            if (version_id not in version_documents or
+                    metadata.get("document_id") != version_documents[version_id] or
+                    not isinstance(text, str) or not text.strip()):
+                raise ValueError("Retrieval candidate is outside the active document/version scope.")
+            if version_id not in manifests:
+                version = next(row for row, _document in versions if row.id == version_id)
+                if not version.manifest_path:
+                    raise ValueError("Active retrieval source manifest is unavailable.")
+                try:
+                    manifest = read_json(version.manifest_path)
+                except (OSError, ValueError, TypeError) as exc:
+                    raise ValueError("Active retrieval source manifest is invalid or unavailable.") from exc
+                if not isinstance(manifest, list):
+                    raise ValueError("Active retrieval source manifest is invalid.")
+                entries = {}
+                for item in manifest:
+                    if (not isinstance(item, dict) or not isinstance(item.get("id"), str) or
+                            not isinstance(item.get("metadata"), dict) or item["id"] in entries):
+                        raise ValueError("Active retrieval source manifest is invalid.")
+                    item_meta = item["metadata"]
+                    if (item_meta.get("version_id") != version_id or
+                            item_meta.get("document_id") != version_documents[version_id]):
+                        raise ValueError("Active retrieval source manifest has conflicting ownership.")
+                    entries[item["id"]] = item_meta
+                if not entries or (version.expected_chunks and len(entries) != version.expected_chunks):
+                    raise ValueError("Active retrieval source manifest is incomplete.")
+                manifests[version_id] = entries
+            expected = manifests[version_id].get(hit["id"])
+            if expected is None or metadata != expected:
+                raise ValueError("Retrieval candidate provenance differs from its canonical manifest.")
+            if expected.get("content_hash") and fingerprint(text) != expected["content_hash"]:
+                raise ValueError("Retrieval candidate content differs from its canonical source manifest.")
+    return True
 
 
 def dense_search(queries, groups, top_k, client, return_rankings=False, embedding_configs=None):
@@ -103,6 +150,7 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
     queries = list(dict.fromkeys((candidates or [question])[:3])) or [question]
     dense, embedding_ms, dense_ms, dense_rankings = dense_search(queries, groups, config["DENSE_TOP_K"], client,
         return_rankings=True, embedding_configs=embedding_configs)
+    validate_candidate_provenance(dense_rankings, rows)
     sparse_start = time.monotonic()
     sparse_rankings, missing = {}, set()
     if config["RETRIEVAL_MODE"] == "hybrid":
@@ -110,6 +158,7 @@ def retrieve(question, k=5, document_ids=None, language=None, client=None, candi
             hits, absent = sparse.search(query, versions, config["SPARSE_TOP_K"], set(document_ids) if document_ids else None)
             sparse_rankings[f"sparse_{index}"] = hits
             missing.update(absent)
+        validate_candidate_provenance(sparse_rankings, rows)
     sparse_ms = (time.monotonic() - sparse_start) * 1000
     degraded = bool(missing) and config["RETRIEVAL_MODE"] == "hybrid"
     if config["RETRIEVAL_MODE"] == "dense" or degraded:

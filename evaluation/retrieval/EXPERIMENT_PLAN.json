@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "phase": "Phase 5 Retrieval",
+  "plan_status": "offline operational baseline completed; human-relevance gate pending",
+  "baseline": {
+    "retrieval_mode": "hybrid",
+    "dense_top_k": 15,
+    "sparse_top_k": 15,
+    "rrf_k": 60,
+    "query_rewriting_enabled": false,
+    "reranking_enabled": false,
+    "chunker": "A0: 1800 characters, 250 character overlap",
+    "embedding": "text-embedding-3-small, 1536 dimensions",
+    "parser_snapshot": "real-corpus-15b24382-v1",
+    "parser_dataset_sha256": "15b24382aeba13e943382370f5a4bfb4ede50b4033805006bad692d23bf3d56a",
+    "ground_truth_version": "gt-v1",
+    "independent_verified_questions": 2,
+    "verified_language_variations": 6
+  },
+  "completed_offline_run": {
+    "run_id": "424b37001c92",
+    "iterations_per_query": 5,
+    "warmups_per_query": 1,
+    "seed": 72026,
+    "documents": 151,
+    "chunks": 2468,
+    "api_calls": 0,
+    "postgresql_access": false,
+    "production_chroma_access": false,
+    "private_result": "instance/retrieval-evaluation/runs/424b37001c92/result.json",
+    "private_result_sha256": "f177af523f28439399986bde63d8054815beffa36c40935e52f1655d31349c9c",
+    "environment": {"os": "Windows 11 build 22631", "python": "3.12.15", "architecture": "AMD64", "logical_cpus": 20}
+  },
+  "planned_after_annotation": [
+    {
+      "id": "R7-human-relevance-baseline",
+      "status": "blocked pending representative human-verified annotations",
+      "strategies": ["BM25", "Dense", "Hybrid RRF"],
+      "hold_constant": ["frozen A0 chunks", "embedding fingerprint", "query set", "active-version filters", "candidate K", "context token budget"],
+      "metrics": ["Evidence Recall@5", "Evidence Recall@10", "MRR@10", "nDCG@10", "evidence-span coverage", "citation source accuracy", "P50/P95 latency", "context tokens"]
+    },
+    {
+      "id": "R8-threshold-and-fallback",
+      "status": "deferred until R7 finds a measurable failure category",
+      "metrics": ["answerable-query evidence recall", "unanswerable-query abstention", "false-positive context rate", "latency"]
+    },
+    {
+      "id": "R9-query-variation-ablation",
+      "status": "deferred until independent query annotations exist",
+      "compare": ["original only", "conservative normalization", "approved transliteration variants"],
+      "metrics": ["Recall@k", "MRR", "nDCG", "latency", "candidate overlap"]
+    }
+  ],
+  "deferred": ["LLM query rewriting", "query decomposition", "HyDE", "Query2doc", "new reranker", "SPLADE", "new embedding model", "paid embedding calls"],
+  "confidential_content_in_public_plan": false
+}

@@ -12,6 +12,7 @@ PROTECTED_SPAN = re.compile(r"https?://\S+|\b[A-Za-z0-9]+(?:[_./:@-][A-Za-z0-9]+
 MN_LATIN = {
     "ajiltan": "ажилтан", "ajiltnii": "ажилтны", "ajiltand": "ажилтанд",
     "eeljiin": "ээлжийн", "amralt": "амралт", "amraltiin": "амралтын",
+    "bish": "биш", "ugui": "үгүй", "gui": "гүй",
     "heden": "хэдэн", "honog": "хоног", "ve": "вэ", "uu": "уу", "u": "үү",
     "sain": "сайн", "baina": "байна", "bainaa": "байна", "tsalin": "цалин",
     "hezee": "хэзээ", "olgodog": "олгодог", "chuluu": "чөлөө", "chuluunii": "чөлөөний",
@@ -24,7 +25,7 @@ MN_LATIN = {
     "what": "what", "how": "how", "many": "many", "is": "is", "are": "are",
     "the": "the", "a": "a", "of": "of", "for": "for", "in": "in", "and": "and", "request": "request",
 }
-MN_LATIN_CUES = {"ajiltan", "ajiltnii", "ajiltand", "eeljiin", "amralt", "amraltiin", "heden", "honog", "honogiin", "ve", "uu", "sain", "baina", "bainaa", "tsalin", "hezee", "olgodog", "chuluu", "chuluunii", "huseltiig", "huselt", "umnu", "uguh", "avah", "juram", "yu", "baiguullaga", "baiguullagiin", "dotood", "ajliin", "tsag", "hedees", "eheldeg", "herhen"}
+MN_LATIN_CUES = {"ajiltan", "ajiltnii", "ajiltand", "eeljiin", "amralt", "amraltiin", "heden", "honog", "honogiin", "ve", "uu", "sain", "baina", "bainaa", "tsalin", "hezee", "olgodog", "chuluu", "chuluunii", "huseltiig", "huselt", "umnu", "uguh", "avah", "juram", "yu", "baiguullaga", "baiguullagiin", "dotood", "ajliin", "tsag", "hedees", "eheldeg", "herhen", "bish", "ugui", "gui"}
 EN_WORDS = {"the", "is", "are", "how", "many", "days", "employee", "employees", "annual", "leave", "policy", "salary", "what", "when", "does", "do", "get", "of", "for", "and", "in", "a", "an", "request"}
 
 
