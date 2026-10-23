@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "rubric_version": "answer-review-v1",
+  "instructions_mn": "Generation output-ийг approved evidence болон эх баримттай тулган хүний бие даасан review хийнэ. Хоосон, байхгүй metadata-г таамгаар нөхөхгүй. Автоматаар human-confirmed болгохгүй.",
+  "annotation_status_values": ["unreviewed", "reviewed", "adjudicated", "unscorable"],
+  "answerability_values": ["answerable", "unanswerable", "ambiguous", "conflicting_evidence", "unscorable"],
+  "score_values": [0, 1, 2, null],
+  "items": [
+    {
+      "item_id": null,
+      "source_ground_truth_dataset_version": null,
+      "question_id": null,
+      "language_variant_id": null,
+      "generation_run_id": null,
+      "document_id": null,
+      "document_version_id": null,
+      "evidence_references": [],
+      "reviewer_id": null,
+      "reviewed_at": null,
+      "annotation_status": "unreviewed",
+      "answerability": null,
+      "scores": {
+        "correctness": null,
+        "claim_faithfulness": null,
+        "citation_support": null,
+        "completeness": null,
+        "abstention_appropriateness": null,
+        "mongolian_clarity": null
+      },
+      "critical_errors": [],
+      "unscorable_reason": null,
+      "reviewer_notes_private": null,
+      "human_confirmed": false
+    }
+  ],
+  "score_guide_mn": {
+    "correctness": "0=буруу/ноцтой зөрчил, 1=хэсэгчлэн зөв, 2=баталгаатай зөв; reference байхгүй бол null.",
+    "claim_faithfulness": "0=олон/чухал claim нотолгоонд байхгүй, 1=зарим claim дэмжигдсэн боловч omission/unsupported claim байна, 2=бүх үнэлэгдэх factual claim supplied evidence-ээр дэмжигдсэн.",
+    "citation_support": "0=ишлэл дэмжихгүй/буруу эх сурвалж, 1=хэсэгчилсэн support, 2=ишилсэн span claim-ийг шууд дэмжинэ. Citation ID validity-г тусад нь тэмдэглэнэ.",
+    "completeness": "0=гол шаардлага орхисон, 1=хэсэгчлэн бүрэн, 2=асуултын шаардлагатай хэсгийг бүрэн хариулсан.",
+    "abstention_appropriateness": "0=дэмжлэггүй хариулсан эсвэл хариулж болох байхад abstain хийсэн, 1=хэсэгчлэн зөв шийдсэн, 2=answerability-д тохирсон.",
+    "mongolian_clarity": "0=ойлгомжгүй/хэлний шаардлага зөрчсөн, 1=ойлгогдох боловч мэдэгдэхүйц алдаатай, 2=ойлгомжтой Монгол кирилл; техникийн нэр ба кодыг зөв хадгалсан."
+  },
+  "critical_error_labels": [
+    "unsupported_policy_claim",
+    "contradicted_policy_claim",
+    "wrong_document_version",
+    "wrong_citation_or_source_span",
+    "number_date_or_unit_changed",
+    "negation_exception_or_condition_dropped",
+    "missing_required_qualification"
+  ],
+  "privacy": "Энэ template-д бодит асуулт, evidence text, model answer эсвэл confidential source metadata оруулахгүй. Actual annotation-ийг Git-ignored instance/generation-evaluation/ дотор хадгална."
+}

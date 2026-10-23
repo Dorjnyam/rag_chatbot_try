@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "phase": "Phase 6 - Context Augmentation and Answer Generation",
+  "status": "offline implementation complete; human answer-quality evaluation not ready",
+  "frozen": {
+    "production_chunker": {"size_characters": 1800, "overlap_characters": 250},
+    "embedding_model": "text-embedding-3-small",
+    "embedding_dimensions": 1536,
+    "generation_model": "gpt-6-luna",
+    "generation_reasoning_effort": "none",
+    "retrieval": {"mode": "hybrid", "dense_top_k": 15, "sparse_top_k": 15, "rrf_k": 60,
+      "reranking_enabled": false, "query_rewriting_enabled": false},
+    "context_chunks": 6,
+    "input_tokens": 12000,
+    "context_tokens": 8000,
+    "history_tokens": 2000,
+    "output_tokens": 1000
+  },
+  "milestones": [
+    {"id": "G1", "status": "complete", "deliverable": "Chapter 9 traceability and frozen baseline"},
+    {"id": "G2", "status": "complete", "deliverable": "Canonical selected-evidence map and verified overlap handling"},
+    {"id": "G3", "status": "complete", "deliverable": "Serialized input/schema budget estimate, repair budget, truthful config and diagnostics"},
+    {"id": "G4", "status": "complete", "deliverable": "Strict citation/source schema and fail-closed consistency validation"},
+    {"id": "G5", "status": "complete_with_limits", "deliverable": "Existing Mongolian output and session behavior retained; quality remains human-unverified"},
+    {"id": "G6", "status": "complete_with_limits", "deliverable": "SDK and source-label failure fixtures; broad injection assurance deferred"},
+    {"id": "G7", "status": "complete", "deliverable": "Offline context/serialization/mock-validation benchmark; zero API calls"},
+    {"id": "G8", "status": "prepared_not_quality_evaluated", "deliverable": "Human answer review rubric and readiness evidence"},
+    {"id": "G9", "status": "deferred", "deliverable": "Advanced context and retrieval strategies require measured justification"},
+    {"id": "G10", "status": "complete", "deliverable": "Mongolian reports and separate readiness decisions"}
+  ],
+  "gates": {
+    "operational_generation": "READY WITH DOCUMENTED LIMITATIONS",
+    "context_citation_integrity": "VERIFIED WITH LIMITATIONS",
+    "human_answer_quality": "NOT READY",
+    "production_readiness": "NOT READY"
+  },
+  "future_real_generation_comparison": {
+    "status": "requires_human-reviewed answer set and separate API-cost approval",
+    "paired_cases": "same independent query IDs, source versions, retrieved evidence, model and generation settings",
+    "metrics": ["correctness", "claim_faithfulness", "citation_support", "completeness", "abstention", "Mongolian clarity", "critical errors", "latency", "actual usage"],
+    "aggregation": "report question-level and group-level results; language variations are correlated and do not count as independent questions"
+  }
+}

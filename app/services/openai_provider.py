@@ -5,6 +5,13 @@ from flask import current_app
 from .vectors import normalize_vector
 
 
+ANSWER_SCHEMA_REVISION = "rag-answer-v2"
+ANSWER_SCHEMA = {"type": "object", "properties": {
+    "status": {"type": "string", "enum": ["answered", "insufficient_evidence"]},
+    "answer": {"type": "string"}, "sources": {"type": "array", "items": {"type": "string"}},
+}, "required": ["status", "answer", "sources"], "additionalProperties": False}
+
+
 class OpenAIProvider:
     def __init__(self, deadline=None):
         try:
@@ -24,9 +31,11 @@ class OpenAIProvider:
         self.provider_attempt_latency_ms = []
         self.embedding_response_models = set()
         self.embedding_error_count = 0
+        self.generation_usage_status = "not_requested"
         self.usage = {"provider": "openai", "embedding_model": self.embedding_model,
             "generation_model": self.generation_model, "embedding": {}, "generation": {}}
         self._encodings = {}
+        self._encoding_fallbacks = {}
         self.client = OpenAI(api_key=self.config["OPENAI_API_KEY"], timeout=self.config["API_TIMEOUT"], max_retries=0)
 
     def _encoding(self, model):
@@ -37,10 +46,18 @@ class OpenAIProvider:
                     encoding = tiktoken.encoding_for_model(model)
                 except KeyError:
                     encoding = tiktoken.get_encoding("o200k_base")
+                    self._encoding_fallbacks[model] = "unknown_model_o200k_base"
                 self._encodings[model] = encoding
             except ImportError:
                 self._encodings[model] = None
+                self._encoding_fallbacks[model] = "utf8_bytes_estimate"
         return self._encodings[model]
+
+    def tokenizer_info(self, model=None):
+        model = model or self.generation_model
+        encoding = self._encoding(model)
+        return {"model": model, "encoding": getattr(encoding, "name", None),
+            "fallback": self._encoding_fallbacks.get(model)}
 
     def count(self, text, model=None):
         encoding = self._encoding(model or self.generation_model)
@@ -56,11 +73,16 @@ class OpenAIProvider:
     def _record_usage(self, section, usage):
         values = usage.model_dump(mode="json", exclude_none=True) if hasattr(usage, "model_dump") else dict(usage)
         current = self.usage.setdefault(section, {})
-        for key, value in values.items():
-            if isinstance(value, (int, float)):
-                current[key] = current.get(key, 0) + value
-            else:
-                current[key] = value
+        def accumulate(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict):
+                    nested = target.setdefault(key, {})
+                    accumulate(nested, value)
+                elif isinstance(value, (int, float)) and not isinstance(value, bool):
+                    target[key] = target.get(key, 0) + value
+                else:
+                    target[key] = value
+        accumulate(current, values)
 
     def _call(self, operation, *, max_attempts=3):
         for attempt in range(max_attempts):
@@ -168,17 +190,20 @@ class OpenAIProvider:
         return [normalize_vector(item.embedding, dimensions) for item in ordered]
 
     def generate(self, prompt, system):
-        schema = {"type": "object", "properties": {
-            "status": {"type": "string", "enum": ["answered", "insufficient_evidence"]},
-            "answer": {"type": "string"}, "sources": {"type": "array", "items": {"type": "string"}},
-        }, "required": ["status", "answer", "sources"], "additionalProperties": False}
-        response = self._call(lambda client: client.responses.create(model=self.generation_model, instructions=system, input=prompt,
-            max_output_tokens=self.config["OUTPUT_TOKENS"], reasoning={"effort": self.config["OPENAI_REASONING_EFFORT"]},
-            text={"format": {"type": "json_schema", "name": "rag_answer", "strict": True, "schema": schema}}))
+        try:
+            response = self._call(lambda client: client.responses.create(model=self.generation_model, instructions=system, input=prompt,
+                max_output_tokens=self.config["OUTPUT_TOKENS"], reasoning={"effort": self.config["OPENAI_REASONING_EFFORT"]},
+                text={"format": {"type": "json_schema", "name": "rag_answer", "strict": True, "schema": ANSWER_SCHEMA}}))
+        except Exception:
+            self.generation_usage_status = "unavailable_request_failed"
+            raise
         if response.usage:
             self._record_usage("generation", response.usage)
-        if response.status == "incomplete":
-            raise ValueError("OpenAI response was incomplete or reached its output limit.")
+            self.generation_usage_status = "available"
+        else:
+            self.generation_usage_status = "unavailable_response"
+        if response.status != "completed":
+            raise ValueError("OpenAI response did not complete successfully.")
         if any(getattr(part, "type", None) == "refusal" for output in response.output for part in getattr(output, "content", [])):
             raise ValueError("OpenAI refused the response.")
         if not response.output_text:

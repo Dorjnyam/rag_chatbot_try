@@ -176,6 +176,25 @@ def register(app):
             "database_access", "provider_api_calls")}
         click.echo(json.dumps(summary, ensure_ascii=False, indent=2))
 
+    @app.cli.group("benchmark-generation")
+    def benchmark_generation():
+        """Measure local context and answer-validation mechanics without providers or databases."""
+
+    @benchmark_generation.command("offline")
+    @click.option("--iterations", type=click.IntRange(1, 20), default=5, show_default=True)
+    def benchmark_generation_offline(iterations):
+        from .generation_benchmark import run_offline_generation_benchmark
+        try:
+            result = run_offline_generation_benchmark(Path(current_app.config["DATA_DIR"]),
+                current_app.config, iterations=iterations)
+        except Exception as exc:
+            raise click.ClickException(f"Offline generation benchmark failed: {type(exc).__name__}: {exc}") from exc
+        summary = {key: result[key] for key in ("run_id", "private_result_path", "private_result_sha256",
+            "configuration", "private_annotation_dataset", "fixture_counts", "cold_initialization", "latency",
+            "token_estimates", "outcomes", "memory", "process_cpu_seconds", "environment",
+            "network_api_calls", "postgresql_access", "chroma_access", "latency_scope")}
+        click.echo(json.dumps(summary, ensure_ascii=False, indent=2))
+
     @benchmark_split.command("freeze")
     def benchmark_split_freeze():
         from .split_benchmark import freeze_snapshot

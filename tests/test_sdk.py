@@ -72,3 +72,51 @@ def test_openai_embedding_rejects_unavailable_or_different_model_identity():
         with pytest.raises(ValueError, match="response model"):
             adapter.embed(["x"], "RETRIEVAL_DOCUMENT")
         adapter.close()
+
+
+def test_openai_generation_uses_strict_schema_and_rejects_noncompleted_status():
+    calls = []
+    def response(request):
+        calls.append(request)
+        return httpx.Response(200, json={"id": "resp_test", "object": "response", "created_at": 1,
+            "status": "queued", "model": "gpt-test", "output": [], "usage": None})
+    app, adapter = _adapter(response)
+    with app.app_context(), pytest.raises(ValueError, match="did not complete"):
+        adapter.generate('{"question":"x"}', "system")
+    request_body = __import__("json").loads(calls[0].content)
+    schema = request_body["text"]["format"]["schema"]
+    assert request_body["text"]["format"]["strict"] is True
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == {"status", "answer", "sources"}
+    assert adapter.generation_usage_status == "unavailable_response"
+    adapter.close()
+
+
+def test_openai_generation_completed_response_records_usage_without_temperature():
+    raw = '{"status":"answered","answer":"Журмын дагуу мэдээлэл байна [S1].","sources":["S1"]}'
+    bodies = []
+    def response(request):
+        bodies.append(__import__("json").loads(request.content))
+        return httpx.Response(200, json={"id": "resp_test", "object": "response", "created_at": 1,
+            "status": "completed", "model": "gpt-test", "output": [{"id": "msg_test", "type": "message",
+                "status": "completed", "role": "assistant", "content": [{"type": "output_text", "text": raw, "annotations": []}]}],
+            "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15,
+                "input_tokens_details": {"cached_tokens": 2}, "output_tokens_details": {"reasoning_tokens": 1}}})
+    app, adapter = _adapter(response)
+    with app.app_context():
+        assert adapter.generate("{}", "system") == raw
+        assert adapter.generation_usage_status == "available"
+        assert adapter.usage["generation"]["input_tokens_details"]["cached_tokens"] == 2
+    assert "temperature" not in bodies[0]
+    adapter.close()
+
+
+def test_generation_nested_usage_counters_accumulate_across_calls():
+    adapter = OpenAIProvider.__new__(OpenAIProvider)
+    adapter.usage = {"generation": {}}
+    adapter._record_usage("generation", {"input_tokens": 10,
+        "input_tokens_details": {"cached_tokens": 3}, "output_tokens_details": {"reasoning_tokens": 2}})
+    adapter._record_usage("generation", {"input_tokens": 8,
+        "input_tokens_details": {"cached_tokens": 4}, "output_tokens_details": {"reasoning_tokens": 1}})
+    assert adapter.usage["generation"] == {"input_tokens": 18,
+        "input_tokens_details": {"cached_tokens": 7}, "output_tokens_details": {"reasoning_tokens": 3}}
